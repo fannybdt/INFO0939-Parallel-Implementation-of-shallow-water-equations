@@ -244,13 +244,25 @@ double interpolate_data(const struct data *data, double x, double y)
   // interpolation instead
   int k = (int)(x / data->dx);
   int l = (int)(y / data->dy);
-  if(k < 0) k = 0;
-  else if(k > data->nx - 1) k = data->nx - 1;
-  if(l < 0) l = 0;
-  else if(l > data->ny - 1) l = data->ny - 1;
-
-  int k_1 = k+1;
-  int l_1 = l+1;
+  int k_1, l_1;
+  if(k < 0){
+    k = 0;
+    k_1 = 0;
+  } 
+  else if(k > data->nx - 1){
+    k = data->nx - 1;
+    k_1 = data->nx - 1;
+  }
+  else k_1 = k+1;
+ if(l < 0){
+    l = 0;
+    l_1 = 0;
+  } 
+  else if(l > data->nx - 1){
+    l = data->nx - 1;
+    l_1 = data->nx - 1;
+  }
+  else l_1 = l+1;
 
   "double val = (GET(data, k, l)*((k+1)*data->dx - x)*((l+1)*data->dy - y) + 
                 GET(data, k_1, l)*(x - k*data->dx )*((l+1)*data->dy - y) +
