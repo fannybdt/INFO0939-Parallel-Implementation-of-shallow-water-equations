@@ -514,3 +514,113 @@ int main(int argc, char **argv)
   MPI_Finalize();
   return 0;
 }
+
+
+
+// MPI
+
+MPI_Request eta_up;
+MPI_Request eta_down;
+MPI_Request eta_left;
+MPI_Request eta_right;
+
+MPI_Sendrecv(process->u_bdy[0], nx, MPI_DOUBLE, process->neighbors[UP], 1,
+              process->u_bdy[1], nx, MPI_DOUBLE, process->neighbors[DOWN], 1,
+              process->world->cart_comm, MPI_STATUS_IGNORE);
+
+MPI_Sendrecv(process->v_bdy[0], ny, MPI_DOUBLE, process->neighbors[LEFT], 2,
+              process->v_bdy[1], ny, MPI_DOUBLE, process->neighbors[RIGHT], 2,
+              process->world->cart_comm, MPI_STATUS_IGNORE);
+
+// update eta for down boundary
+i = nx - 1;
+for(int j = 0; j < ny; j++){
+  double h_ij = GET(&h_interp, i, j);
+  double c1 = param.dt * h_ij;
+  double eta_ij = GET(&eta, i, j)
+          - c1 / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
+          - c1 / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
+        SET(&eta, i, j, eta_ij);
+}
+
+// Send this boundary
+MPI_Isend(process->etay_bdy[0], ny, MPI_DOUBLE, process->neighbors[DOWN], 1, process->world->cart_comm, &eta_down);
+MPI_Irecv(process->etay_bdy[1], ny, MPI_DOUBLE, process->neighbors[UP], 1, process->world->cart_comm, &eta_up);
+
+// update eta for right boundary
+j = ny - 1;
+for(int i = 0; i < nx; i++){
+  double h_ij = GET(&h_interp, i, j);
+  double c1 = param.dt * h_ij;
+  double eta_ij = GET(&eta, i, j)
+          - c1 / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
+          - c1 / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
+        SET(&eta, i, j, eta_ij);
+}
+
+// Send this boundary
+MPI_Isend(process->etax_bdy[0], ny, MPI_DOUBLE, process->neighbors[RIGHT], 2, process->world->cart_comm, &eta_right);
+MPI_Irecv(process->etax_bdy[1], ny, MPI_DOUBLE, process->neighbors[LEFT], 2, process->world->cart_comm, &eta_left);
+
+
+// update eta for interior domain and other boundaries
+    for(int i = 0; i < nx-1; i++) {
+      for(int j = 0; j < ny-1 ; j++) {
+        double h_ij = GET(&h_interp, i, j);
+        double c1 = param.dt * h_ij;
+        double eta_ij = GET(&eta, i, j)
+          - c1 / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
+          - c1 / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
+        SET(&eta, i, j, eta_ij);
+      }
+    }
+
+    // update u and v domain except up and left boundaries
+    for(int i = 1; i < nx; i++) {
+      for(int j = 1; j < ny; j++) {
+        double c1 = param.dt * param.g;
+        double c2 = param.dt * param.gamma;
+        double eta_ij = GET(&eta, i, j);
+        double eta_imj = GET(&eta, (i == 0) ? 0 : i - 1, j);
+        double eta_ijm = GET(&eta, i, (j == 0) ? 0 : j - 1);
+        double u_ij = (1. - c2) * GET(&u, i, j)
+          - c1 / param.dx * (eta_ij - eta_imj);
+        double v_ij = (1. - c2) * GET(&v, i, j)
+          - c1 / param.dy * (eta_ij - eta_ijm);
+        SET(&u, i, j, u_ij);
+        SET(&v, i, j, v_ij);
+      }
+    }
+
+    MPI_Wait_all(eta_up, eta_left);
+
+    // update left boundary
+    int j = 0;
+    for(int i = 0; i < nx; i++) {
+        double c1 = param.dt * param.g;
+        double c2 = param.dt * param.gamma;
+        double eta_ij = GET(&eta, i, j);
+        double eta_imj = GET(&eta, (i == 0) ? 0 : i - 1, j);
+        double eta_ijm = GET(&eta, i, (j == 0) ? 0 : j - 1);
+        double u_ij = (1. - c2) * GET(&u, i, j)
+          - c1 / param.dx * (eta_ij - eta_imj);
+        double v_ij = (1. - c2) * GET(&v, i, j)
+          - c1 / param.dy * (eta_ij - eta_ijm);
+        SET(&u, i, j, u_ij);
+        SET(&v, i, j, v_ij);
+
+    // update up boundary
+    int i = 0;
+    for(int j = 0; j < ny; j++) {
+        double c1 = param.dt * param.g;
+        double c2 = param.dt * param.gamma;
+        double eta_ij = GET(&eta, i, j);
+        double eta_imj = GET(&eta, (i == 0) ? 0 : i - 1, j);
+        double eta_ijm = GET(&eta, i, (j == 0) ? 0 : j - 1);
+        double u_ij = (1. - c2) * GET(&u, i, j)
+          - c1 / param.dx * (eta_ij - eta_imj);
+        double v_ij = (1. - c2) * GET(&v, i, j)
+          - c1 / param.dy * (eta_ij - eta_ijm);
+        SET(&u, i, j, u_ij);
+        SET(&v, i, j, v_ij);
+    }
