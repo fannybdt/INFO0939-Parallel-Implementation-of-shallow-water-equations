@@ -37,53 +37,74 @@ typedef enum neighbor {
 
 } neighbor_t;
 
-
-typedef struct world {
-
-  int world_size; // nb de process
-  MPI_Comm cart_comm;
-
-  int dims[2];
-
-  data *eta_out;
-  data *u_out;
-  data *v_out;
-
-}world_t;
-
 typedef struct process {
 
-  int world_rank; 
-
-  double *eta_bdy;
-  double *u_bdy;
-  double *v_bdy;
-  
+  int rank; 
   int coords[2];
   int neighbors[4];
 
-  world_t *world;
+  double *etax_bdy;
+  double *etay_bdy;
+  double *u_bdy;
+  double *v_bdy;
 
-}world_t;
 
-void init_world(world_t **world)
-{
-  *world = malloc(sizeof(world_t));
-  if(!(*world))
-    fprintf(stderr, "Error: Failure of memory allocation for the stucture world \n");
+}process_t;
+
+void init_process(process_t **process){
+
+  *process = malloc(sizeof(process_t));
+  if(!(*process))
+    fprintf(stderr, "Error: Failure of memory allocation for the stucture process \n");
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 
-  ((*world)->dims)[0] = 0;
-  ((*world)->dims)[1] = 0;
+  MPI_Comm_rank(MPI_COMM_WORLD , &((*process)->rank));
+  MPI_Cart_coords(cart_comm, &(*process)->rank, 2, &((*process)->coords));
 
-  MPI_Comm_size(MPI_COMM_WORLD, &(*world)->world_size);
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Cart_shift(cart_comm, 0, 1, &neighbors[UP], &neighbors[DOWN]);
+  MPI_Cart_shift(cart_comm, 1, 1, &neighbors[LEFT], &neighbors[RIGHT]);
 
-  MPI_Dims_create(world_size, 2, dims);
-  MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, reorder, &cart_comm);
-  MPI_Comm_rank(cart_comm, &cart_rank);
+  process->etax_bdy = malloc(sizeof(double*)*2);
+  process->etay_bdy = malloc(sizeof(double*)*2);
+  process->u_bdy = malloc(sizeof(double*)*2);
+  process->v_bdy = malloc(sizeof(double*)*2);
 
+  if(!process->etax_bdy || !process->eta_bdy || !process->pz_bdy || !process->u_bdy || !process->v_bdy || !process->vz_bdy)
+  {
+    fprintf(stderr, "Error: Failure of memory allocation for the process");
+    MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+  }
+  process->etax_bdy[0] = malloc(sizeof(double)*size_direction[1]);
+  process->etax_bdy[1] = malloc(sizeof(double)*size_direction[0]);
+  process->u_bdy[0] = malloc(sizeof(double)*size_direction[1]);
+  process->u_bdy[1] = malloc(sizeof(double)*size_direction[0]);
+  process->etay_bdy[0] = malloc(sizeof(double)*size_direction[1]);
+  process->etay_bdy[1] = malloc(sizeof(double)*size_direction[0]);
+  process->v_bdy[0] = malloc(sizeof(double)*size_direction[1]);
+  process->v_bdy[1] = malloc(sizeof(double)*size_direction[0]);
+  
+  if(!(process->etax_bdy[0])||!(process->etax_bdy[1])||!(process->etay_bdy[0])||!(process->etay_bdy[1])||!(process->u_bdy[0])||!(process->u_bdy[1])||!(process->v_bdy[0])||!(process->v_bdy[1]))
+  {
+    fprintf(stderr, "Error: Failure of memory allocation for the process");
+    MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+  }
 
+  for(int i = 0; i < size_direction[6]; i++)
+  {;
+    process->etax_bdy[0][i] = 0;
+    process->etax_bdy[1][i] = 0;
+    process->v_bdy[0][i] = 0;
+    process->v_bdy[1][i] = 0;
+  }
+
+  for(int j = 0; j < size_direction[3]; j++)
+  {
+    process->etay_bdy[0][j] = 0;
+    process->etay_bdy[1][j] = 0;
+    process->u_bdy[0][j] = 0;
+    process->u_bdy[1][j] = 0;
+  
+  }
 }
 
 
@@ -300,7 +321,7 @@ void free_data(struct data *data)
 double interpolate_data(const struct data *data, double x, double y)
 {
   // TODO: this returns the nearest neighbor, should implement actual
-  // interpolation instead
+  // interpolation instead  
   int k = (int)(x / data->dx);
   int l = (int)(y / data->dy);
   int k_1, l_1;
@@ -423,14 +444,14 @@ int main(int argc, char **argv)
       }
     }
 
-    if rank == 0: {
-      // output solution
-      if(param.sampling_rate && !(n % param.sampling_rate)) {
-        write_data_vtk(&eta, "water elevation", param.output_eta_filename, n);
-        //write_data_vtk(&u, "x velocity", param.output_u_filename, n);
-        //write_data_vtk(&v, "y velocity", param.output_v_filename, n);
-      }
+
+    // output solution
+    if(param.sampling_rate && !(n % param.sampling_rate)) {
+      write_data_vtk(&eta, "water elevation", param.output_eta_filename, n);
+      //write_data_vtk(&u, "x velocity", param.output_u_filename, n);
+      //write_data_vtk(&v, "y velocity", param.output_v_filename, n);
     }
+    
 
     // impose boundary conditions
     double t = n * param.dt;
@@ -459,39 +480,10 @@ int main(int argc, char **argv)
       exit(0);
     }
 
-    // update eta
-    for(int i = 0; i < nx; i++) {
-      for(int j = 0; j < ny ; j++) {
-        // TODO: this does not evaluate h at the correct locations
-        double h_ij = GET(&h_interp, i, j);
-        double c1 = param.dt * h_ij;
-        double eta_ij = GET(&eta, i, j)
-          - c1 / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
-          - c1 / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
-        SET(&eta, i, j, eta_ij);
-      }
-    }
-
-    // update u and v
-    for(int i = 0; i < nx; i++) {
-      for(int j = 0; j < ny; j++) {
-        double c1 = param.dt * param.g;
-        double c2 = param.dt * param.gamma;
-        double eta_ij = GET(&eta, i, j);
-        double eta_imj = GET(&eta, (i == 0) ? 0 : i - 1, j); // A modif 
-        double eta_ijm = GET(&eta, i, (j == 0) ? 0 : j - 1);
-        double u_ij = (1. - c2) * GET(&u, i, j)
-          - c1 / param.dx * (eta_ij - eta_imj);
-        double v_ij = (1. - c2) * GET(&v, i, j)
-          - c1 / param.dy * (eta_ij - eta_ijm);
-        SET(&u, i, j, u_ij);
-        SET(&v, i, j, v_ij);
-      }
-    }
+    update(&eta, &u, &v, &process);
 
   }
 
-  if rank == 0: {  // pour le process zéro
     write_manifest_vtk("water elevation", param.output_eta_filename,
                       param.dt, nt, param.sampling_rate);
     //write_manifest_vtk("x velocity", param.output_u_filename,
@@ -499,10 +491,11 @@ int main(int argc, char **argv)
     //write_manifest_vtk("y velocity", param.output_v_filename,
     //                   param.dt, nt, param.sampling_rate);
 
-    double time = GET_TIME() - start;
-    printf("\nDone: %g seconds (%g MUpdates/s)\n", time,
-          1e-6 * (double)eta.nx * (double)eta.ny * (double)nt / time);
-  }
+    if(process->rank == 0){
+      double time = GET_TIME() - start;
+      printf("\nDone: %g seconds (%g MUpdates/s)\n", time,
+            1e-6 * (double)eta.nx * (double)eta.ny * (double)nt / time);
+    }
 
 
 
@@ -518,109 +511,113 @@ int main(int argc, char **argv)
 
 
 // MPI
+void update(struct data *eta, struct data *u, struct data *v, process_t *process){
+  MPI_Request eta_up;
+  MPI_Request eta_down;
+  MPI_Request eta_left;
+  MPI_Request eta_right;
 
-MPI_Request eta_up;
-MPI_Request eta_down;
-MPI_Request eta_left;
-MPI_Request eta_right;
+  MPI_Sendrecv(process->u_bdy[0], nx, MPI_DOUBLE, process->neighbors[UP], 1,
+                process->u_bdy[1], nx, MPI_DOUBLE, process->neighbors[DOWN], 1,
+                process->world->cart_comm, MPI_STATUS_IGNORE);
 
-MPI_Sendrecv(process->u_bdy[0], nx, MPI_DOUBLE, process->neighbors[UP], 1,
-              process->u_bdy[1], nx, MPI_DOUBLE, process->neighbors[DOWN], 1,
-              process->world->cart_comm, MPI_STATUS_IGNORE);
+  MPI_Sendrecv(process->v_bdy[0], ny, MPI_DOUBLE, process->neighbors[LEFT], 2,
+                process->v_bdy[1], ny, MPI_DOUBLE, process->neighbors[RIGHT], 2,
+                process->world->cart_comm, MPI_STATUS_IGNORE);
 
-MPI_Sendrecv(process->v_bdy[0], ny, MPI_DOUBLE, process->neighbors[LEFT], 2,
-              process->v_bdy[1], ny, MPI_DOUBLE, process->neighbors[RIGHT], 2,
-              process->world->cart_comm, MPI_STATUS_IGNORE);
+  // update eta for down boundary
+  i = nx - 1;
+  for(int j = 0; j < ny; j++){
+    double h_ij = GET(&h_interp, i, j);
+    double c1 = param.dt * h_ij;
+    double eta_ij = GET(&eta, i, j)
+            - c1 / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
+            - c1 / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
+          SET(&eta, i, j, eta_ij);
+  }
 
-// update eta for down boundary
-i = nx - 1;
-for(int j = 0; j < ny; j++){
-  double h_ij = GET(&h_interp, i, j);
-  double c1 = param.dt * h_ij;
-  double eta_ij = GET(&eta, i, j)
-          - c1 / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
-          - c1 / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
-        SET(&eta, i, j, eta_ij);
+  // Send this boundary
+  MPI_Isend(process->etay_bdy[0], ny, MPI_DOUBLE, process->neighbors[DOWN], 1, process->world->cart_comm, &eta_down);
+  MPI_Irecv(process->etay_bdy[1], ny, MPI_DOUBLE, process->neighbors[UP], 1, process->world->cart_comm, &eta_up);
+
+  // update eta for right boundary
+  j = ny - 1;
+  for(int i = 0; i < nx; i++){
+    double h_ij = GET(&h_interp, i, j);
+    double c1 = param.dt * h_ij;
+    double eta_ij = GET(&eta, i, j)
+            - c1 / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
+            - c1 / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
+          SET(&eta, i, j, eta_ij);
+  }
+
+  // Send this boundary
+  MPI_Isend(process->etax_bdy[0], ny, MPI_DOUBLE, process->neighbors[RIGHT], 2, process->world->cart_comm, &eta_right);
+  MPI_Irecv(process->etax_bdy[1], ny, MPI_DOUBLE, process->neighbors[LEFT], 2, process->world->cart_comm, &eta_left);
+
+
+  // update eta for interior domain and other boundaries
+      for(int i = 0; i < nx-1; i++) {
+        for(int j = 0; j < ny-1 ; j++) {
+          double h_ij = GET(&h_interp, i, j);
+          double c1 = param.dt * h_ij;
+          double eta_ij = GET(&eta, i, j)
+            - c1 / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
+            - c1 / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
+          SET(&eta, i, j, eta_ij);
+        }
+      }
+
+      // update u and v domain except up and left boundaries
+      for(int i = 1; i < nx; i++) {
+        for(int j = 1; j < ny; j++) {
+          double c1 = param.dt * param.g;
+          double c2 = param.dt * param.gamma;
+          double eta_ij = GET(&eta, i, j);
+          double eta_imj = GET(&eta, (i == 0) ? 0 : i - 1, j);
+          double eta_ijm = GET(&eta, i, (j == 0) ? 0 : j - 1);
+          double u_ij = (1. - c2) * GET(&u, i, j)
+            - c1 / param.dx * (eta_ij - eta_imj);
+          double v_ij = (1. - c2) * GET(&v, i, j)
+            - c1 / param.dy * (eta_ij - eta_ijm);
+          SET(&u, i, j, u_ij);
+          SET(&v, i, j, v_ij);
+        }
+      }
+
+      MPI_Wait_all(eta_up, eta_left);
+
+      // update left boundary
+      int j = 0;
+      for(int i = 0; i < nx; i++) {
+          double c1 = param.dt * param.g;
+          double c2 = param.dt * param.gamma;
+          double eta_ij = GET(&eta, i, j);
+          double eta_imj = GET(&eta, (i == 0) ? 0 : i - 1, j);
+          double eta_ijm = GET(&eta, i, (j == 0) ? 0 : j - 1);
+          double u_ij = (1. - c2) * GET(&u, i, j)
+            - c1 / param.dx * (eta_ij - eta_imj);
+          double v_ij = (1. - c2) * GET(&v, i, j)
+            - c1 / param.dy * (eta_ij - eta_ijm);
+          SET(&u, i, j, u_ij);
+          SET(&v, i, j, v_ij);
+
+      // update up boundary
+      int i = 0;
+      for(int j = 0; j < ny; j++) {
+          double c1 = param.dt * param.g;
+          double c2 = param.dt * param.gamma;
+          double eta_ij = GET(&eta, i, j);
+          double eta_imj = GET(&eta, (i == 0) ? 0 : i - 1, j);
+          double eta_ijm = GET(&eta, i, (j == 0) ? 0 : j - 1);
+          double u_ij = (1. - c2) * GET(&u, i, j)
+            - c1 / param.dx * (eta_ij - eta_imj);
+          double v_ij = (1. - c2) * GET(&v, i, j)
+            - c1 / param.dy * (eta_ij - eta_ijm);
+          SET(&u, i, j, u_ij);
+          SET(&v, i, j, v_ij);
+      }
+      
 }
 
-// Send this boundary
-MPI_Isend(process->etay_bdy[0], ny, MPI_DOUBLE, process->neighbors[DOWN], 1, process->world->cart_comm, &eta_down);
-MPI_Irecv(process->etay_bdy[1], ny, MPI_DOUBLE, process->neighbors[UP], 1, process->world->cart_comm, &eta_up);
 
-// update eta for right boundary
-j = ny - 1;
-for(int i = 0; i < nx; i++){
-  double h_ij = GET(&h_interp, i, j);
-  double c1 = param.dt * h_ij;
-  double eta_ij = GET(&eta, i, j)
-          - c1 / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
-          - c1 / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
-        SET(&eta, i, j, eta_ij);
-}
-
-// Send this boundary
-MPI_Isend(process->etax_bdy[0], ny, MPI_DOUBLE, process->neighbors[RIGHT], 2, process->world->cart_comm, &eta_right);
-MPI_Irecv(process->etax_bdy[1], ny, MPI_DOUBLE, process->neighbors[LEFT], 2, process->world->cart_comm, &eta_left);
-
-
-// update eta for interior domain and other boundaries
-    for(int i = 0; i < nx-1; i++) {
-      for(int j = 0; j < ny-1 ; j++) {
-        double h_ij = GET(&h_interp, i, j);
-        double c1 = param.dt * h_ij;
-        double eta_ij = GET(&eta, i, j)
-          - c1 / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
-          - c1 / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
-        SET(&eta, i, j, eta_ij);
-      }
-    }
-
-    // update u and v domain except up and left boundaries
-    for(int i = 1; i < nx; i++) {
-      for(int j = 1; j < ny; j++) {
-        double c1 = param.dt * param.g;
-        double c2 = param.dt * param.gamma;
-        double eta_ij = GET(&eta, i, j);
-        double eta_imj = GET(&eta, (i == 0) ? 0 : i - 1, j);
-        double eta_ijm = GET(&eta, i, (j == 0) ? 0 : j - 1);
-        double u_ij = (1. - c2) * GET(&u, i, j)
-          - c1 / param.dx * (eta_ij - eta_imj);
-        double v_ij = (1. - c2) * GET(&v, i, j)
-          - c1 / param.dy * (eta_ij - eta_ijm);
-        SET(&u, i, j, u_ij);
-        SET(&v, i, j, v_ij);
-      }
-    }
-
-    MPI_Wait_all(eta_up, eta_left);
-
-    // update left boundary
-    int j = 0;
-    for(int i = 0; i < nx; i++) {
-        double c1 = param.dt * param.g;
-        double c2 = param.dt * param.gamma;
-        double eta_ij = GET(&eta, i, j);
-        double eta_imj = GET(&eta, (i == 0) ? 0 : i - 1, j);
-        double eta_ijm = GET(&eta, i, (j == 0) ? 0 : j - 1);
-        double u_ij = (1. - c2) * GET(&u, i, j)
-          - c1 / param.dx * (eta_ij - eta_imj);
-        double v_ij = (1. - c2) * GET(&v, i, j)
-          - c1 / param.dy * (eta_ij - eta_ijm);
-        SET(&u, i, j, u_ij);
-        SET(&v, i, j, v_ij);
-
-    // update up boundary
-    int i = 0;
-    for(int j = 0; j < ny; j++) {
-        double c1 = param.dt * param.g;
-        double c2 = param.dt * param.gamma;
-        double eta_ij = GET(&eta, i, j);
-        double eta_imj = GET(&eta, (i == 0) ? 0 : i - 1, j);
-        double eta_ijm = GET(&eta, i, (j == 0) ? 0 : j - 1);
-        double u_ij = (1. - c2) * GET(&u, i, j)
-          - c1 / param.dx * (eta_ij - eta_imj);
-        double v_ij = (1. - c2) * GET(&v, i, j)
-          - c1 / param.dy * (eta_ij - eta_ijm);
-        SET(&u, i, j, u_ij);
-        SET(&v, i, j, v_ij);
-    }
