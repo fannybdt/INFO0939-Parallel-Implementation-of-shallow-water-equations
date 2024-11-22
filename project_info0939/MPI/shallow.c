@@ -69,7 +69,7 @@ void init_process(process_t **process){
   process->u_bdy = malloc(sizeof(double*)*2);
   process->v_bdy = malloc(sizeof(double*)*2);
 
-  if(!process->etax_bdy || !process->eta_bdy || !process->pz_bdy || !process->u_bdy || !process->v_bdy || !process->vz_bdy)
+  if(!process->etax_bdy || !process->eta_bdy || !process->u_bdy || !process->v_bdy)
   {
     fprintf(stderr, "Error: Failure of memory allocation for the process");
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
@@ -344,17 +344,11 @@ double interpolate_data(const struct data *data, double x, double y)
   }
   else l_1 = l+1;
 
-  "double val = (GET(data, k, l)*((k+1)*data->dx - x)*((l+1)*data->dy - y) + 
-                GET(data, k_1, l)*(x - k*data->dx )*((l+1)*data->dy - y) +
-                GET(data, k, l_1)*((k+1)*data->dx - x)*(y - l*data->dy) +
-                GET(data, k_1, l_1)*(x - k*data->dx )*(y - l*data->dy)) / (data->dx*data->dy);
-  "
 
-  'w_x = (x - k*data->dx)/data->dx;'
   double w_x = (x/data->dx) - k;
   double w_y = (y/data.dy) - l;
 
-  double val = (GET(data, k, l)*(1-w_x)*(1-w_y) + 
+  double val =  GET(data, k, l)*(1-w_x)*(1-w_y) + 
                 GET(data, k_1, l)*w_x*(1-w_y) +
                 GET(data, k, l_1)*(1-w_x)*w_y +
                 GET(data, k_1, l_1)*w_x*w_y;
@@ -372,9 +366,6 @@ int main(int argc, char **argv)
     MPI_Finalize();
     return 1;
   }  
-
-
-  init_world()
 
   int world_size;
   int rank, cart_rank;
