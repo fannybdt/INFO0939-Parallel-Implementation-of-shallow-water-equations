@@ -48,28 +48,43 @@ typedef struct process {
   double *u_bdy;
   double *v_bdy;
 
+  int start_x;
+  int end_x;
+  int length_x;
+
+  int start_y;
+  int end_y;
+  int length_y;
 
 }process_t;
 
-void init_process(process_t **process){
+void init_process(process_t **process, MPI_Comm cart_comm, int dims[2], int nx, int ny){
 
-  *process = malloc(sizeof(process_t));
-  if(!(*process))
+  process = malloc(sizeof(process_t));
+  if(!(process))
     fprintf(stderr, "Error: Failure of memory allocation for the stucture process \n");
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 
   MPI_Comm_rank(MPI_COMM_WORLD , &((*process)->rank));
   MPI_Cart_coords(cart_comm, &(*process)->rank, 2, &((*process)->coords));
 
-  MPI_Cart_shift(cart_comm, 0, 1, &neighbors[UP], &neighbors[DOWN]);
-  MPI_Cart_shift(cart_comm, 1, 1, &neighbors[LEFT], &neighbors[RIGHT]);
+  MPI_Cart_shift(cart_comm, 0, 1, &((*process)->neighbors)[UP],&((*process)->neighbors)[DOWN]);
+  MPI_Cart_shift(cart_comm, 1, 1, &((*process)->neighbors)[LEFT], &((*process)->neighbors)[RIGHT]);
 
-  process->etax_bdy = malloc(sizeof(double*)*2);
-  process->etay_bdy = malloc(sizeof(double*)*2);
-  process->u_bdy = malloc(sizeof(double*)*2);
-  process->v_bdy = malloc(sizeof(double*)*2);
+  (*process)->start_x = floor(((*process)->coords[1]*nx)/dims[1]);
+  (*process)->end_x = floor(((*process)->coords[1] + 1)*nx)/dims[1] - 1;
+  (*process)->length_x = (*process)->end_x - (*process)->start_x;
 
-  if(!process->etax_bdy || !process->eta_bdy || !process->u_bdy || !process->v_bdy)
+  (*process)->start_y = floor((*process)->coords[2]*ny)/dims[2];
+  (*process)->end_y = floor(((*process)->coords[2] + 1)*ny)/dims[2] - 1;
+  (*process)->length_y = (*process)->end_y - (*process)->start_y;
+
+  (*process)->etax_bdy = malloc(sizeof(double*)*2);
+  (*process)->etay_bdy = malloc(sizeof(double*)*2);
+  (*process)->u_bdy = malloc(sizeof(double*)*2);
+  (*process)->v_bdy = malloc(sizeof(double*)*2);
+
+  if(!(*process)->etax_bdy || !(*process)->etay_bdy || !(*process)->u_bdy || !(*process)->v_bdy)
   {
     fprintf(stderr, "Error: Failure of memory allocation for the process");
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
@@ -123,8 +138,6 @@ void free_process(process_t **process){
 
     free(process);
 }
-
-
 
 
 #define GET(data, i, j) ((data)->values[(data)->nx * (j) + (i)])
@@ -394,13 +407,19 @@ int main(int argc, char **argv)
 
   MPI_Comm cart_comm;
 
+  // Size of the world (number of rank)
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
+  // Creation of the Cartesian grid
   MPI_Dims_create(world_size, 2, dims);
   MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, reorder, &cart_comm);
+  // Retrieval of the rank of the world
   MPI_Comm_rank(cart_comm, &cart_rank);
 
+  if(rank == 0)
+  {
+    printf("\n== WORLD CREATION ==\n(P_x, P_y) = (%d, %d)\n World size : %d\n", dims[0], dims[1], world_size);
+    fflush(stdout);
+  }
   struct parameters param;
   if(read_parameters(&param, argv[1])) return 1;
   print_parameters(&param);
@@ -506,7 +525,8 @@ int main(int argc, char **argv)
     }
 
 
-
+  //free the cartesian communication grid
+  MPI_Comm_free(cart_comm);
   free_data(&h_interp);
   free_data(&eta);
   free_data(&u);
