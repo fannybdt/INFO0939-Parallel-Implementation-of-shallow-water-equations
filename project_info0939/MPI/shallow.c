@@ -441,18 +441,18 @@ int main(int argc, char **argv)
   printf(" - number of time steps: %d\n", nt);
 
   struct data eta, u, v;
-  init_data(&eta, nx, ny, param.dx, param.dx, 0.);
+  init_data(&eta, process->length_x, process->length_y, param.dx, param.dy, 0.);
   init_data(&u, nx + 1, ny, param.dx, param.dy, 0.);
   init_data(&v, nx, ny + 1, param.dx, param.dy, 0.);
 
   // interpolate bathymetry
   struct data h_interp;
-  init_data(&h_interp, nx, ny, param.dx, param.dy, 0.);
+  init_data(&h_interp, process->length_x, process->length_y, param.dx, param.dy, 0.);
   
-  for(int j = 0; j < ny; j++) {
-    for(int i = 0; i < nx; i++) {
-      double x = i * param.dx;
-      double y = j * param.dy;
+  for(int j = 0; j < process->length_y; j++) {
+    for(int i = 0; i < process->length_x; i++) {
+      double x = i * param.dx + process->start_x;
+      double y = j * param.dy + process->start_y;
       double val = interpolate_data(&h, x, y);
       SET(&h_interp, i, j, val);
     }
