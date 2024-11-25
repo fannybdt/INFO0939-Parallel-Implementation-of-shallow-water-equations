@@ -60,7 +60,7 @@ typedef struct process {
 
 void init_process(process_t **process, MPI_Comm cart_comm, int dims[2], int nx, int ny){
 
-  process = malloc(sizeof(process_t));
+  *process = malloc(sizeof(process_t));
   if(!(process))
     fprintf(stderr, "Error: Failure of memory allocation for the stucture process \n");
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
@@ -376,7 +376,7 @@ double interpolate_data(const struct data *data, double x, double y)
 
 
   double w_x = (x/data->dx) - k;
-  double w_y = (y/data.dy) - l;
+  double w_y = (y/data->dy) - l;
 
   double val =  GET(data, k, l)*(1-w_x)*(1-w_y) + 
                 GET(data, k_1, l)*w_x*(1-w_y) +
@@ -427,6 +427,11 @@ int main(int argc, char **argv)
   struct data h;
   if(read_data(&h, param.input_h_filename)) return 1;
 
+  int nx = h.nx;
+  int ny = h.ny;
+  process_t *my_process;
+  init_process(&my_process, cart_comm, dims, nx, ny);
+
   // infer size of domain from input elevation data
   double hx = h.nx * h.dx;
   double hy = h.ny * h.dy;
@@ -441,18 +446,18 @@ int main(int argc, char **argv)
   printf(" - number of time steps: %d\n", nt);
 
   struct data eta, u, v;
-  init_data(&eta, process->length_x, process->length_y, param.dx, param.dy, 0.);
+  init_data(&eta, my_process->length_x, my_process->length_y, param.dx, param.dy, 0.);
   init_data(&u, nx + 1, ny, param.dx, param.dy, 0.);
   init_data(&v, nx, ny + 1, param.dx, param.dy, 0.);
 
   // interpolate bathymetry
   struct data h_interp;
-  init_data(&h_interp, process->length_x, process->length_y, param.dx, param.dy, 0.);
+  init_data(&h_interp, my_process->length_x, my_process->length_y, param.dx, param.dy, 0.);
   
-  for(int j = 0; j < process->length_y; j++) {
-    for(int i = 0; i < process->length_x; i++) {
-      double x = i * param.dx + process->start_x;
-      double y = j * param.dy + process->start_y;
+  for(int j = 0; j < my_process->length_y; j++) {
+    for(int i = 0; i < my_process->length_x; i++) {
+      double x = i * param.dx + my_process->start_x;
+      double y = j * param.dy + my_process->start_y;
       double val = interpolate_data(&h, x, y);
       SET(&h_interp, i, j, val);
     }
@@ -462,7 +467,7 @@ int main(int argc, char **argv)
 
   for(int n = 0; n < nt; n++) {
 
-    if rank == 0: {
+    if (rank == 0){
       if(n && (n % (nt / 10)) == 0) {
         double time_sofar = GET_TIME() - start;
         double eta = (nt - n) * time_sofar / n;
@@ -507,7 +512,7 @@ int main(int argc, char **argv)
       exit(0);
     }
 
-    update(&eta, &u, &v, &process);
+    update(eta, u, v, my_process, cart_comm, nx, ny, param, h_interp);
 
   }
 
@@ -518,7 +523,7 @@ int main(int argc, char **argv)
     //write_manifest_vtk("y velocity", param.output_v_filename,
     //                   param.dt, nt, param.sampling_rate);
 
-    if(process->rank == 0){
+    if(my_process->rank == 0){
       double time = GET_TIME() - start;
       printf("\nDone: %g seconds (%g MUpdates/s)\n", time,
             1e-6 * (double)eta.nx * (double)eta.ny * (double)nt / time);
@@ -539,7 +544,7 @@ int main(int argc, char **argv)
 
 
 // MPI
-void update(struct data *eta, struct data *u, struct data *v, process_t *process){
+void update(struct data eta, struct data u, struct data v, process_t *process, MPI_Comm cart_comm, int nx, int ny, parameters param, struct data h_interp){
   MPI_Request eta_up;
   MPI_Request eta_down;
   MPI_Request eta_left;
@@ -547,14 +552,14 @@ void update(struct data *eta, struct data *u, struct data *v, process_t *process
 
   MPI_Sendrecv(process->u_bdy[0], nx, MPI_DOUBLE, process->neighbors[UP], 1,
                 process->u_bdy[1], nx, MPI_DOUBLE, process->neighbors[DOWN], 1,
-                process->world->cart_comm, MPI_STATUS_IGNORE);
+                cart_comm, MPI_STATUS_IGNORE);
 
   MPI_Sendrecv(process->v_bdy[0], ny, MPI_DOUBLE, process->neighbors[LEFT], 2,
                 process->v_bdy[1], ny, MPI_DOUBLE, process->neighbors[RIGHT], 2,
-                process->world->cart_comm, MPI_STATUS_IGNORE);
+                cart_comm, MPI_STATUS_IGNORE);
 
   // update eta for down boundary
-  i = nx - 1;
+  int i = nx - 1;
   for(int j = 0; j < ny; j++){
     double h_ij = GET(&h_interp, i, j);
     double c1 = param.dt * h_ij;
@@ -565,11 +570,11 @@ void update(struct data *eta, struct data *u, struct data *v, process_t *process
   }
 
   // Send this boundary
-  MPI_Isend(process->etay_bdy[0], ny, MPI_DOUBLE, process->neighbors[DOWN], 1, process->world->cart_comm, &eta_down);
-  MPI_Irecv(process->etay_bdy[1], ny, MPI_DOUBLE, process->neighbors[UP], 1, process->world->cart_comm, &eta_up);
+  MPI_Isend(process->etay_bdy[0], ny, MPI_DOUBLE, process->neighbors[DOWN], 1,  cart_comm, &eta_down);
+  MPI_Irecv(process->etay_bdy[1], ny, MPI_DOUBLE, process->neighbors[UP], 1,  cart_comm, &eta_up);
 
   // update eta for right boundary
-  j = ny - 1;
+  int j = ny - 1;
   for(int i = 0; i < nx; i++){
     double h_ij = GET(&h_interp, i, j);
     double c1 = param.dt * h_ij;
@@ -580,8 +585,8 @@ void update(struct data *eta, struct data *u, struct data *v, process_t *process
   }
 
   // Send this boundary
-  MPI_Isend(process->etax_bdy[0], ny, MPI_DOUBLE, process->neighbors[RIGHT], 2, process->world->cart_comm, &eta_right);
-  MPI_Irecv(process->etax_bdy[1], ny, MPI_DOUBLE, process->neighbors[LEFT], 2, process->world->cart_comm, &eta_left);
+  MPI_Isend(process->etax_bdy[0], ny, MPI_DOUBLE, process->neighbors[RIGHT], 2,  cart_comm, &eta_right);
+  MPI_Irecv(process->etax_bdy[1], ny, MPI_DOUBLE, process->neighbors[LEFT], 2,  cart_comm, &eta_left);
 
 
   // update eta for interior domain and other boundaries
