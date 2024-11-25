@@ -90,7 +90,7 @@ void init_process(process_t **process){
   }
 
   for(int i = 0; i < size_direction[6]; i++)
-  {;
+  {
     process->etax_bdy[0][i] = 0;
     process->etax_bdy[1][i] = 0;
     process->v_bdy[0][i] = 0;
@@ -105,6 +105,23 @@ void init_process(process_t **process){
     process->u_bdy[1][j] = 0;
   
   }
+}
+
+void free_process(process_t **process){
+    for (int i = 0; i < 2; i++)
+    {
+      free(process->etax_bdy[i]);
+      free(process->etay_bdy[i]);
+      free(process->u_bdy[i]);
+      free(process->v_bdy[i]);
+    }
+
+    free(process->etax_bdy);
+    free(process->etay_bdy);
+    free(process->u_bdy);
+    free(process->v_bdy);
+
+    free(process);
 }
 
 
