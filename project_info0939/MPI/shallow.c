@@ -427,11 +427,6 @@ int main(int argc, char **argv)
   struct data h;
   if(read_data(&h, param.input_h_filename)) return 1;
 
-  int nx = h.nx;
-  int ny = h.ny;
-  process_t *my_process;
-  init_process(&my_process, cart_comm, dims, nx, ny);
-
   // infer size of domain from input elevation data
   double hx = h.nx * h.dx;
   double hy = h.ny * h.dy;
@@ -445,10 +440,14 @@ int main(int argc, char **argv)
          hx, hy, nx, ny, nx * ny);
   printf(" - number of time steps: %d\n", nt);
 
+  process_t *my_process;
+  init_process(&my_process, cart_comm, dims, nx, ny);
+
   struct data eta, u, v;
   init_data(&eta, my_process->length_x, my_process->length_y, param.dx, param.dy, 0.);
-  init_data(&u, nx + 1, ny, param.dx, param.dy, 0.);
-  init_data(&v, nx, ny + 1, param.dx, param.dy, 0.);
+  init_data(&u, my_process->length_x + 1, my_process->length_y, param.dx, param.dy, 0.);
+  init_data(&v, my_process->length_x, my_process->length_y + 1, param.dx, param.dy, 0.);
+  
 
   // interpolate bathymetry
   struct data h_interp;
