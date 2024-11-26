@@ -511,7 +511,7 @@ int main(int argc, char **argv)
       exit(0);
     }
 
-    update(eta, u, v, my_process, cart_comm, nx, ny, param, h_interp);
+    update(eta, u, v, my_process, cart_comm,param, h_interp);
 
   }
 
@@ -543,23 +543,23 @@ int main(int argc, char **argv)
 
 
 // MPI
-void update(struct data eta, struct data u, struct data v, process_t *process, MPI_Comm cart_comm, int nx, int ny, parameters param, struct data h_interp){
+void update(struct data eta, struct data u, struct data v, process_t *process, MPI_Comm cart_comm, parameters param, struct data h_interp){
   MPI_Request eta_up;
   MPI_Request eta_down;
   MPI_Request eta_left;
   MPI_Request eta_right;
 
-  MPI_Sendrecv(process->u_bdy[0], nx, MPI_DOUBLE, process->neighbors[UP], 1,
-                process->u_bdy[1], nx, MPI_DOUBLE, process->neighbors[DOWN], 1,
+  MPI_Sendrecv(process->u_bdy[0], process->length_x, MPI_DOUBLE, process->neighbors[UP], 1,
+                process->u_bdy[1], process->length_x, MPI_DOUBLE, process->neighbors[DOWN], 1,
                 cart_comm, MPI_STATUS_IGNORE);
 
-  MPI_Sendrecv(process->v_bdy[0], ny, MPI_DOUBLE, process->neighbors[LEFT], 2,
-                process->v_bdy[1], ny, MPI_DOUBLE, process->neighbors[RIGHT], 2,
+  MPI_Sendrecv(process->v_bdy[0], process->length_y, MPI_DOUBLE, process->neighbors[LEFT], 2,
+                process->v_bdy[1], process->length_y, MPI_DOUBLE, process->neighbors[RIGHT], 2,
                 cart_comm, MPI_STATUS_IGNORE);
 
   // update eta for down boundary
-  int i = nx - 1;
-  for(int j = 0; j < ny; j++){
+  int i = process->length_x - 1;
+  for(int j = 0; j < process->length_y; j++){
     double h_ij = GET(&h_interp, i, j);
     double c1 = param.dt * h_ij;
     double eta_ij = GET(&eta, i, j)
@@ -569,12 +569,12 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   }
 
   // Send this boundary
-  MPI_Isend(process->etay_bdy[0], ny, MPI_DOUBLE, process->neighbors[DOWN], 1,  cart_comm, &eta_down);
-  MPI_Irecv(process->etay_bdy[1], ny, MPI_DOUBLE, process->neighbors[UP], 1,  cart_comm, &eta_up);
+  MPI_Isend(process->etay_bdy[0], process->length_y, MPI_DOUBLE, process->neighbors[DOWN], 1,  cart_comm, &eta_down);
+  MPI_Irecv(process->etay_bdy[1], process->length_y, MPI_DOUBLE, process->neighbors[UP], 1,  cart_comm, &eta_up);
 
   // update eta for right boundary
-  int j = ny - 1;
-  for(int i = 0; i < nx; i++){
+  int j = process->length_y - 1;
+  for(int i = 0; i < process->length_x; i++){
     double h_ij = GET(&h_interp, i, j);
     double c1 = param.dt * h_ij;
     double eta_ij = GET(&eta, i, j)
@@ -584,13 +584,13 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   }
 
   // Send this boundary
-  MPI_Isend(process->etax_bdy[0], ny, MPI_DOUBLE, process->neighbors[RIGHT], 2,  cart_comm, &eta_right);
-  MPI_Irecv(process->etax_bdy[1], ny, MPI_DOUBLE, process->neighbors[LEFT], 2,  cart_comm, &eta_left);
+  MPI_Isend(process->etax_bdy[0], process->length_y, MPI_DOUBLE, process->neighbors[RIGHT], 2,  cart_comm, &eta_right);
+  MPI_Irecv(process->etax_bdy[1], process->length_y, MPI_DOUBLE, process->neighbors[LEFT], 2,  cart_comm, &eta_left);
 
 
   // update eta for interior domain and other boundaries
-      for(int i = 0; i < nx-1; i++) {
-        for(int j = 0; j < ny-1 ; j++) {
+      for(int i = 0; i < process->length_x-1; i++) {
+        for(int j = 0; j < process->length_y-1 ; j++) {
           double h_ij = GET(&h_interp, i, j);
           double c1 = param.dt * h_ij;
           double eta_ij = GET(&eta, i, j)
@@ -601,8 +601,8 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
       }
 
       // update u and v domain except up and left boundaries
-      for(int i = 1; i < nx; i++) {
-        for(int j = 1; j < ny; j++) {
+      for(int i = 1; i < process->length_x; i++) {
+        for(int j = 1; j < process->length_y; j++) {
           double c1 = param.dt * param.g;
           double c2 = param.dt * param.gamma;
           double eta_ij = GET(&eta, i, j);
@@ -621,7 +621,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
 
       // update left boundary
       int j = 0;
-      for(int i = 0; i < nx; i++) {
+      for(int i = 0; i < process->length_x; i++) {
           double c1 = param.dt * param.g;
           double c2 = param.dt * param.gamma;
           double eta_ij = GET(&eta, i, j);
@@ -636,7 +636,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
 
       // update up boundary
       int i = 0;
-      for(int j = 0; j < ny; j++) {
+      for(int j = 0; j < process->length_y; j++) {
           double c1 = param.dt * param.g;
           double c2 = param.dt * param.gamma;
           double eta_ij = GET(&eta, i, j);
