@@ -43,10 +43,14 @@ typedef struct process {
   int coords[2];
   int neighbors[4];
 
-  double *etax_bdy;
-  double *etay_bdy;
-  double *u_bdy;
-  double *v_bdy;
+  double *etax_bdy_send;
+  double *etax_bdy_rec;
+  double *etay_bdy_send;
+  double *etay_bdy_rec;
+  double *u_bdy_send;
+  double *u_bdy_rec;
+  double *v_bdy_send;
+  double *v_bdy_rec;
 
   int start_x;
   int end_x;
@@ -61,7 +65,7 @@ typedef struct process {
 void init_process(process_t **process, MPI_Comm cart_comm, int dims[2], int nx, int ny){
 
   *process = malloc(sizeof(process_t));
-  if(!(process))
+  if(!(*process))
     fprintf(stderr, "Error: Failure of memory allocation for the stucture process \n");
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 
@@ -79,62 +83,54 @@ void init_process(process_t **process, MPI_Comm cart_comm, int dims[2], int nx, 
   (*process)->end_y = floor(((*process)->coords[2] + 1)*ny)/dims[2] - 1;
   (*process)->length_y = (*process)->end_y - (*process)->start_y;
 
-  (*process)->etax_bdy = malloc(sizeof(double*)*2);
-  (*process)->etay_bdy = malloc(sizeof(double*)*2);
-  (*process)->u_bdy = malloc(sizeof(double*)*2);
-  (*process)->v_bdy = malloc(sizeof(double*)*2);
-
   if(!(*process)->etax_bdy || !(*process)->etay_bdy || !(*process)->u_bdy || !(*process)->v_bdy)
   {
     fprintf(stderr, "Error: Failure of memory allocation for the process");
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
   }
-  process->etax_bdy[0] = malloc(sizeof(double)*size_direction[1]);
-  process->etax_bdy[1] = malloc(sizeof(double)*size_direction[0]);
-  process->u_bdy[0] = malloc(sizeof(double)*size_direction[1]);
-  process->u_bdy[1] = malloc(sizeof(double)*size_direction[0]);
-  process->etay_bdy[0] = malloc(sizeof(double)*size_direction[1]);
-  process->etay_bdy[1] = malloc(sizeof(double)*size_direction[0]);
-  process->v_bdy[0] = malloc(sizeof(double)*size_direction[1]);
-  process->v_bdy[1] = malloc(sizeof(double)*size_direction[0]);
+  (*process)->etax_bdy_send = malloc(sizeof(double)*(*process)->length_x);
+  (*process)->etax_bdy_rec = malloc(sizeof(double)*(*process)->length_x);
+  (*process)->u_bdy_send = malloc(sizeof(double)*(*process)->length_x);
+  (*process)->u_bdy_rec = malloc(sizeof(double)*(*process)->length_x);
+  (*process)->etay_bdy_send = malloc(sizeof(double)*(*process)->length_y);
+  (*process)->etay_bdy_rec = malloc(sizeof(double)*(*process)->length_y);
+  (*process)->v_bdy_send = malloc(sizeof(double)*(*process)->length_y);
+  (*process)->v_bdy_rec = malloc(sizeof(double)*(*process)->length_y);
   
-  if(!(process->etax_bdy[0])||!(process->etax_bdy[1])||!(process->etay_bdy[0])||!(process->etay_bdy[1])||!(process->u_bdy[0])||!(process->u_bdy[1])||!(process->v_bdy[0])||!(process->v_bdy[1]))
+  if(!((*process)->etax_bdy_send)||!((*process)->etax_bdy_rec)||!((*process)->u_bdy_send)||!((*process)->u_bdy_rec)||!(*process)->etay_bdy_send)||!((*process)->etay_bdy_rec)||!((*process)->v_bdy_send)||!((*process)->v_bdy_rec))
   {
     fprintf(stderr, "Error: Failure of memory allocation for the process");
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
   }
 
-  for(int i = 0; i < size_direction[6]; i++)
+  for(int i = 0; i < (*process)->length_x; i++)
   {
-    process->etax_bdy[0][i] = 0;
-    process->etax_bdy[1][i] = 0;
-    process->v_bdy[0][i] = 0;
-    process->v_bdy[1][i] = 0;
+    process->etax_bdy_send[i] = 0;
+    process->etax_bdy_rec[i] = 0;
+    process->u_bdy_send[i] = 0;
+    process->u_bdy_rec[i] = 0;
   }
 
-  for(int j = 0; j < size_direction[3]; j++)
+  for(int j = 0; j < (*process)->length_y; j++)
   {
-    process->etay_bdy[0][j] = 0;
-    process->etay_bdy[1][j] = 0;
-    process->u_bdy[0][j] = 0;
-    process->u_bdy[1][j] = 0;
+    process->etay_bdy_send[j] = 0;
+    process->etay_bdy_rec[j] = 0;
+    process->v_bdy_send[j] = 0;
+    process->v_bdy_rec[j] = 0;
   
   }
 }
 
-void free_process(process_t **process){
-    for (int i = 0; i < 2; i++)
-    {
-      free(process->etax_bdy[i]);
-      free(process->etay_bdy[i]);
-      free(process->u_bdy[i]);
-      free(process->v_bdy[i]);
-    }
-
-    free(process->etax_bdy);
-    free(process->etay_bdy);
-    free(process->u_bdy);
-    free(process->v_bdy);
+void free_process(process_t *process){
+   
+    free(process->etax_bdy_send);
+    free(process->etax_bdy_rec);
+    free(process->etay_bdy_send);
+    free(process->etay_bdy_rec);
+    free(process->u_bdy_send);
+    free(process->u_bdy_rec);
+    free(process->v_bdy_send);
+    free(process->v_bdy_rec);
 
     free(process);
 }
@@ -549,12 +545,12 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   MPI_Request eta_left;
   MPI_Request eta_right;
 
-  MPI_Sendrecv(process->u_bdy[0], process->length_x, MPI_DOUBLE, process->neighbors[UP], 1,
-                process->u_bdy[1], process->length_x, MPI_DOUBLE, process->neighbors[DOWN], 1,
+  MPI_Sendrecv(process->u_bdy_send, process->length_x, MPI_DOUBLE, process->neighbors[UP], 1,
+                process->u_bdy_rec, process->length_x, MPI_DOUBLE, process->neighbors[DOWN], 1,
                 cart_comm, MPI_STATUS_IGNORE);
 
-  MPI_Sendrecv(process->v_bdy[0], process->length_y, MPI_DOUBLE, process->neighbors[LEFT], 2,
-                process->v_bdy[1], process->length_y, MPI_DOUBLE, process->neighbors[RIGHT], 2,
+  MPI_Sendrecv(process->v_bdy_send, process->length_y, MPI_DOUBLE, process->neighbors[LEFT], 2,
+                process->v_bdy_rec, process->length_y, MPI_DOUBLE, process->neighbors[RIGHT], 2,
                 cart_comm, MPI_STATUS_IGNORE);
 
   // update eta for down boundary
@@ -569,8 +565,8 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   }
 
   // Send this boundary
-  MPI_Isend(process->etay_bdy[0], process->length_y, MPI_DOUBLE, process->neighbors[DOWN], 1,  cart_comm, &eta_down);
-  MPI_Irecv(process->etay_bdy[1], process->length_y, MPI_DOUBLE, process->neighbors[UP], 1,  cart_comm, &eta_up);
+  MPI_Isend(process->etay_bdy_send, process->length_y, MPI_DOUBLE, process->neighbors[DOWN], 1,  cart_comm, &eta_down);
+  MPI_Irecv(process->etay_bdy_rec, process->length_y, MPI_DOUBLE, process->neighbors[UP], 1,  cart_comm, &eta_up);
 
   // update eta for right boundary
   int j = process->length_y - 1;
@@ -584,8 +580,8 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   }
 
   // Send this boundary
-  MPI_Isend(process->etax_bdy[0], process->length_y, MPI_DOUBLE, process->neighbors[RIGHT], 2,  cart_comm, &eta_right);
-  MPI_Irecv(process->etax_bdy[1], process->length_y, MPI_DOUBLE, process->neighbors[LEFT], 2,  cart_comm, &eta_left);
+  MPI_Isend(process->etax_bdy_send, process->length_y, MPI_DOUBLE, process->neighbors[RIGHT], 2,  cart_comm, &eta_right);
+  MPI_Irecv(process->etax_bdy_rec, process->length_y, MPI_DOUBLE, process->neighbors[LEFT], 2,  cart_comm, &eta_left);
 
 
   // update eta for interior domain and other boundaries
