@@ -76,11 +76,11 @@ void init_process(process_t **process, MPI_Comm cart_comm, int dims[2], int nx, 
   MPI_Cart_shift(cart_comm, 1, 1, &((*process)->neighbors)[LEFT], &((*process)->neighbors)[RIGHT]);
 
   (*process)->start_x = floor(((*process)->coords[0]*nx)/dims[1]);
-  (*process)->end_x = floor(((*process)->coords[0] + 1)*nx)/dims[1] - 1;
-  (*process)->length_x = (*process)->end_x - (*process)->start_x;
+  (*process)->end_x = floor((((*process)->coords[0] + 1)*nx)/dims[1]) - 1;
+  (*process)->length_x = (*process)->end_x - (*process)->start_x + 1;
 
-  (*process)->start_y = floor((*process)->coords[1]*ny)/dims[2];
-  (*process)->end_y = floor(((*process)->coords[1] + 1)*ny)/dims[2] - 1;
+  (*process)->start_y = floor(((*process)->coords[1]*ny)/dims[2]);
+  (*process)->end_y = floor((((*process)->coords[1] + 1)*ny)/dims[2]) - 1;
   (*process)->length_y = (*process)->end_y - (*process)->start_y + 1;
 
   (*process)->etay_bdy_send = malloc(sizeof(double)*(*process)->length_y);
@@ -98,7 +98,7 @@ void init_process(process_t **process, MPI_Comm cart_comm, int dims[2], int nx, 
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
   }
 
-  for(int i = 0; i < (*process)->length_y; i++)
+  for(int i = 0; i < (*process)->length_x; i++)
   {
     (*process)->etax_bdy_send[i] = 0;
     (*process)->etax_bdy_rec[i] = 0;
@@ -106,7 +106,7 @@ void init_process(process_t **process, MPI_Comm cart_comm, int dims[2], int nx, 
     (*process)->u_bdy_rec[i] = 0;
   }
 
-  for(int j = 0; j < (*process)->length_x; j++)
+  for(int j = 0; j < (*process)->length_y; j++)
   {
     (*process)->etay_bdy_send[j] = 0;
     (*process)->etay_bdy_rec[j] = 0;
@@ -134,32 +134,39 @@ void free_process(process_t *process){
 #define GET(data, i, j) ((data)->values[(data)->nx * (j) + (i)])
 #define SET(data, i, j, val) ((data)->values[(data)->nx * (j) + (i)] = (val))
 
-int read_parameters(struct parameters *param, const char *filename)
-{
-  FILE *fp = fopen(filename, "r");
-  if(!fp) {
-    printf("Error: Could not open parameter file '%s'\n", filename);
-    return 1;
-  }
-  int ok = 1;
-  if(ok) ok = (fscanf(fp, "%lf", &param->dx) == 1);
-  if(ok) ok = (fscanf(fp, "%lf", &param->dy) == 1);
-  if(ok) ok = (fscanf(fp, "%lf", &param->dt) == 1);
-  if(ok) ok = (fscanf(fp, "%lf", &param->max_t) == 1);
-  if(ok) ok = (fscanf(fp, "%lf", &param->g) == 1);
-  if(ok) ok = (fscanf(fp, "%lf", &param->gamma) == 1);
-  if(ok) ok = (fscanf(fp, "%d", &param->source_type) == 1);
-  if(ok) ok = (fscanf(fp, "%d", &param->sampling_rate) == 1);
-  if(ok) ok = (fscanf(fp, "%256s", param->input_h_filename) == 1);
-  if(ok) ok = (fscanf(fp, "%256s", param->output_eta_filename) == 1);
-  if(ok) ok = (fscanf(fp, "%256s", param->output_u_filename) == 1);
-  if(ok) ok = (fscanf(fp, "%256s", param->output_v_filename) == 1);
-  fclose(fp);
-  if(!ok) {
-    printf("Error: Could not read one or more parameters in '%s'\n", filename);
-    return 1;
-  }
-  return 0;
+
+int read_parameters(struct parameters *param, const char *filename, int rank) {
+    FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        printf("Error: Could not open parameter file '%s'\n", filename);
+        return 1;
+    }
+    int ok = 1;
+    if (ok) ok = (fscanf(fp, "%lf", &param->dx) == 1);
+    if (ok) ok = (fscanf(fp, "%lf", &param->dy) == 1);
+    if (ok) ok = (fscanf(fp, "%lf", &param->dt) == 1);
+    if (ok) ok = (fscanf(fp, "%lf", &param->max_t) == 1);
+    if (ok) ok = (fscanf(fp, "%lf", &param->g) == 1);
+    if (ok) ok = (fscanf(fp, "%lf", &param->gamma) == 1);
+    if (ok) ok = (fscanf(fp, "%d", &param->source_type) == 1);
+    if (ok) ok = (fscanf(fp, "%d", &param->sampling_rate) == 1);
+    if (ok) ok = (fscanf(fp, "%256s", param->input_h_filename) == 1);
+    if (ok) ok = (fscanf(fp, "%256s", param->output_eta_filename) == 1);
+    if (ok) ok = (fscanf(fp, "%256s", param->output_u_filename) == 1);
+    if (ok) ok = (fscanf(fp, "%256s", param->output_v_filename) == 1);
+    fclose(fp);
+
+    if (!ok) {
+        printf("Error: Could not read one or more parameters in '%s'\n", filename);
+        return 1;
+    }
+    return 0;
+}
+
+void filename_with_rank(char *filename, int rank) {
+    char buffer[256];
+    snprintf(buffer, sizeof(buffer), "%d_%s", rank, filename);
+    snprintf(filename, 256, "%s", buffer);  // Remplacer directement dans le champ
 }
 
 void print_parameters(const struct parameters *param)
@@ -389,7 +396,7 @@ int main(int argc, char **argv)
   }  
 
   int world_size;
-  int rank, cart_rank;
+  int cart_rank;
 
   int dims[2]    = {0, 0};
   int periods[2] = {0, 0};
@@ -406,15 +413,10 @@ int main(int argc, char **argv)
   // Retrieval of the rank of the world
   MPI_Comm_rank(cart_comm, &cart_rank);
 
-  if(rank == 0)
-  {
-    printf("\n== WORLD CREATION ==\n(P_x, P_y) = (%d, %d)\n World size : %d\n", dims[0], dims[1], world_size);
-    fflush(stdout);
-  }
   struct parameters param;
   if(read_parameters(&param, argv[1])) return 1;
   print_parameters(&param);
-
+  
   struct data h;
   if(read_data(&h, param.input_h_filename)) return 1;
 
@@ -434,17 +436,23 @@ int main(int argc, char **argv)
   process_t *my_process;
   init_process(&my_process, cart_comm, dims, nx, ny);
 
+    if(my_process->rank == 0)
+  {
+    printf("\n== WORLD CREATION ==\n(P_x, P_y) = (%d, %d)\n World size : %d\n", dims[0], dims[1], world_size);
+    fflush(stdout);
+  }
+
   struct data eta, u, v;
   init_data(&eta, my_process->length_x, my_process->length_y, param.dx, param.dy, 0.);
-  if process->coords[0] == dims[0] - 1:
-    init_data(&u, my_process->length_x + 1, my_process->length_y, param.dx, param.dy, 0.);
+  if (my_process->coords[0] == dims[0] - 1){
+    init_data(&u, my_process->length_x + 1, my_process->length_y, param.dx, param.dy, 0.);}
   else
-    init_data(&u, my_process->length_x, my_process->length_y, param.dx, param.dy, 0.);
+    {init_data(&u, my_process->length_x, my_process->length_y, param.dx, param.dy, 0.);}
 
-  if process->coords[1] == dims[1] - 1:
-    init_data(&v, my_process->length_x, my_process->length_y + 1, param.dx, param.dy, 0.);
-  else
-    init_data(&v, my_process->length_x, my_process->length_y, param.dx, param.dy, 0.);
+  if (my_process->coords[1] == dims[1] - 1){
+    init_data(&v, my_process->length_x, my_process->length_y + 1, param.dx, param.dy, 0.);}
+  else{
+    init_data(&v, my_process->length_x, my_process->length_y, param.dx, param.dy, 0.);}
 
   // interpolate bathymetry
   struct data h_interp;
@@ -458,12 +466,15 @@ int main(int argc, char **argv)
       SET(&h_interp, i, j, val);
     }
   }
+  filename_with_rank(param.output_eta_filename, my_process->rank);
+  filename_with_rank(param.output_u_filename, my_process->rank);
+  filename_with_rank(param.output_v_filename, my_process->rank);
 
   double start = GET_TIME();
 
   for(int n = 0; n < nt; n++) {
 
-    if (rank == 0){
+    if (my_process->rank == 0){
       if(n && (n % (nt / 10)) == 0) {
         double time_sofar = GET_TIME() - start;
         double eta = (nt - n) * time_sofar / n;
@@ -484,23 +495,40 @@ int main(int argc, char **argv)
     // impose boundary conditions
     double t = n * param.dt;
     if(param.source_type == 1) {
+
       // sinusoidal velocity on top boundary
       double A = 5;
       double f = 1. / 20.;
-      for(int i = 0; i < nx; i++) {
-        for(int j = 0; j < ny; j++) {
+      if (my_process->start_x == 0){
+        for(int j = 0; j < my_process->length_y; j++) {
           SET(&u, 0, j, 0.);
-          SET(&u, nx, j, 0.);
+        }
+      }
+      if (my_process->start_y == 0){
+        for (int i = 0; i < my_process-> length_x; i++){
           SET(&v, i, 0, 0.);
+        }
+      }
+      if (my_process -> end_x == nx-1){
+        for (int j = 0; j < my_process -> length_y; j++){
+          SET(&u, nx, j, 0.);}
+      }
+      if (my_process -> end_y == ny-1){
+        for (int i = 0; i < my_process -> length_x; i++)
+        {
           SET(&v, i, ny, A * sin(2 * M_PI * f * t));
         }
       }
+
+      
     }
     else if(param.source_type == 2) {
       // sinusoidal elevation in the middle of the domain
       double A = 5;
       double f = 1. / 20.;
-      SET(&eta, nx / 2, ny / 2, A * sin(2 * M_PI * f * t));
+      if (my_process -> start_x <= floor(nx/2) && my_process-> end_x >= floor(ny/2) && my_process -> start_y <= floor(ny/2) && my_process-> end_y >= floor(ny/2)){
+              SET(&eta, floor(nx / 2)-my_process->start_x, floor(ny / 2)-my_process->start_y, A * sin(2 * M_PI * f * t));
+      }
     }
     else {
       // TODO: add other sources
@@ -508,7 +536,7 @@ int main(int argc, char **argv)
       exit(0);
     }
 
-    update(eta, u, v, my_process, cart_comm,param, h_interp, dims);
+    update(eta, u, v, my_process, cart_comm, param, h_interp, dims);
 
   }
 
@@ -540,7 +568,7 @@ int main(int argc, char **argv)
 
 
 // MPI
-void update(struct data eta, struct data u, struct data v, process_t *process, MPI_Comm cart_comm, parameters param, struct data h_interp){
+void update(struct data eta, struct data u, struct data v, process_t *process, MPI_Comm cart_comm, struct parameters param, struct data h_interp, int dims[2]){
   MPI_Request eta_up;
   MPI_Request eta_down;
   MPI_Request eta_left;
@@ -559,7 +587,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   for(int j = 0; j < process->length_y-1; j++){
     double h_ij = GET(&h_interp, i, j);
     double c1 = param.dt * h_ij;
-    double u_1 = proces->coords[0]== dims[0]? GET(&u, i+1, j): process->u_bdy_rec[j];
+    double u_1 = process->coords[0]== dims[0]? GET(&u, i+1, j): process->u_bdy_rec[j];
     double eta_ij = GET(&eta, i, j)
             - c1 / param.dx * (u_1 - GET(&u, i, j))
             - c1 / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
@@ -572,8 +600,8 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   int j = process->length_y - 1;
   double h_ij = GET(&h_interp, i, j);
   double c1 = param.dt * h_ij;
-  double u_1 = proces->coords[0]== dims[0]? GET(&u, i+1, j): process->u_bdy_rec[j];
-  double v_1 = proces->coords[1]== dims[1]? GET(&v, i, j+1): process->v_bdy_rec[i];
+  double u_1 = process->coords[0]== dims[0]? GET(&u, i+1, j): process->u_bdy_rec[j];
+  double v_1 = process->coords[1]== dims[1]? GET(&v, i, j+1): process->v_bdy_rec[i];
   double eta_ij = GET(&eta, i, j)
           - c1 / param.dx * (u_1 - GET(&u, i, j))
           - c1 / param.dy * (v_1 - GET(&v, i, j));
@@ -590,7 +618,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   for(int i = 0; i < process->length_x - 1; i++){
     double h_ij = GET(&h_interp, i, j);
     double c1 = param.dt * h_ij;
-    double v_1 = proces->coords[1]== dims[1]? GET(&v, i, j+1): process->v_bdy_rec[i];
+    double v_1 = process->coords[1]== dims[1]? GET(&v, i, j+1): process->v_bdy_rec[i];
     double eta_ij = GET(&eta, i, j)
             - c1 / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
             - c1 / param.dy * (v_1 - GET(&v, i, j));
