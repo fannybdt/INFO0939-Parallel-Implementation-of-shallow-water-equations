@@ -83,11 +83,18 @@ void init_process(process_t **process, MPI_Comm cart_comm, int dims[2], int nx, 
   (*process)->end_y = floor(((*process)->coords[1] + 1)*ny)/dims[2] - 1;
   (*process)->length_y = (*process)->end_y - (*process)->start_y + 1;
 
+<<<<<<< Updated upstream
   if(!(*process)->etax_bdy || !(*process)->etay_bdy || !(*process)->u_bdy || !(*process)->v_bdy)
   {
     fprintf(stderr, "Error: Failure of memory allocation for the process");
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
   }
+=======
+  (*process)->etax_bdy_send = malloc(sizeof(double)*(*process)->length_x);
+  (*process)->etax_bdy_rec = malloc(sizeof(double)*(*process)->length_x);
+  (*process)->u_bdy_send = malloc(sizeof(double)*(*process)->length_x);
+  (*process)->u_bdy_rec = malloc(sizeof(double)*(*process)->length_x);
+>>>>>>> Stashed changes
   (*process)->etay_bdy_send = malloc(sizeof(double)*(*process)->length_y);
   (*process)->etay_bdy_rec = malloc(sizeof(double)*(*process)->length_y);
   (*process)->u_bdy_send = malloc(sizeof(double)*(*process)->length_y);
@@ -105,18 +112,32 @@ void init_process(process_t **process, MPI_Comm cart_comm, int dims[2], int nx, 
 
   for(int i = 0; i < (*process)->length_y; i++)
   {
+<<<<<<< Updated upstream
     process->etay_bdy_send[i] = 0;
     process->etay_bdy_rec[i] = 0;
     process->u_bdy_send[i] = 0;
     process->u_bdy_rec[i] = 0;
+=======
+    (*process)->etax_bdy_send[i] = 0;
+    (*process)->etax_bdy_rec[i] = 0;
+    (*process)->u_bdy_send[i] = 0;
+    (*process)->u_bdy_rec[i] = 0;
+>>>>>>> Stashed changes
   }
 
   for(int j = 0; j < (*process)->length_x; j++)
   {
+<<<<<<< Updated upstream
     process->etax_bdy_send[j] = 0;
     process->etax_bdy_rec[j] = 0;
     process->v_bdy_send[j] = 0;
     process->v_bdy_rec[j] = 0;
+=======
+    (*process)->etay_bdy_send[j] = 0;
+    (*process)->etay_bdy_rec[j] = 0;
+    (*process)->v_bdy_send[j] = 0;
+    (*process)->v_bdy_rec[j] = 0;
+>>>>>>> Stashed changes
   
   }
 }
