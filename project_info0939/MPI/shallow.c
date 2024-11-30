@@ -76,12 +76,12 @@ void init_process(process_t **process, MPI_Comm cart_comm, int dims[2], int nx, 
   MPI_Cart_shift(cart_comm, 0, 1, &((*process)->neighbors)[UP],&((*process)->neighbors)[DOWN]);
   MPI_Cart_shift(cart_comm, 1, 1, &((*process)->neighbors)[LEFT], &((*process)->neighbors)[RIGHT]);
 
-  (*process)->start_x = floor(((*process)->coords[0]*nx)/dims[1]);
-  (*process)->end_x = floor((((*process)->coords[0] + 1)*nx)/dims[1]) - 1;
+  (*process)->start_x = (int) floor(((*process)->coords[0]*nx)/dims[1]);
+  (*process)->end_x = (int) floor((((*process)->coords[0] + 1)*nx)/dims[1]) - 1;
   (*process)->length_x = (*process)->end_x - (*process)->start_x + 1;
 
-  (*process)->start_y = floor(((*process)->coords[1]*ny)/dims[2]);
-  (*process)->end_y = floor((((*process)->coords[1] + 1)*ny)/dims[2]) - 1;
+  (*process)->start_y = (int) floor(((*process)->coords[1]*ny)/dims[2]);
+  (*process)->end_y = (int) floor((((*process)->coords[1] + 1)*ny)/dims[2]) - 1;
   (*process)->length_y = (*process)->end_y - (*process)->start_y + 1;
 
   (*process)->etay_bdy_send = malloc(sizeof(double)*(*process)->length_y);
@@ -685,8 +685,8 @@ int main(int argc, char **argv)
       // sinusoidal elevation in the middle of the domain
       double A = 5;
       double f = 1. / 20.;
-      if (my_process -> start_x <= floor(nx/2) && my_process-> end_x >= floor(ny/2) && my_process -> start_y <= floor(ny/2) && my_process-> end_y >= floor(ny/2)){
-              SET(&eta, floor(nx / 2)-my_process->start_x, floor(ny / 2)-my_process->start_y, A * sin(2 * M_PI * f * t));
+      if (my_process -> start_x <= nx/2 && my_process-> end_x >= ny/2 && my_process -> start_y <= ny/2 && my_process-> end_y >= ny/2){
+              SET(&eta, nx /2 -my_process->start_x, ny /2-my_process->start_y, A * sin(2 * M_PI * f * t));
       }
     }
     else {
