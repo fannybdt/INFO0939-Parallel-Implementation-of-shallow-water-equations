@@ -413,13 +413,13 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   }
 
   // update eta down right corner
-  int i = process->length_x - 1;
-  int j = process->length_y - 1;
-  double h_ij = GET(&h_interp, i, j);
-  double c1 = param.dt * h_ij;
-  double u_1 = process->coords[0]== dims[0]? GET(&u, i+1, j): process->u_bdy_rec[j];
+  i = process->length_x - 1;
+  j = process->length_y - 1;
+  h_ij = GET(&h_interp, i, j);
+  c1 = param.dt * h_ij;
+  u_1 = process->coords[0]== dims[0]? GET(&u, i+1, j): process->u_bdy_rec[j];
   double v_1 = process->coords[1]== dims[1]? GET(&v, i, j+1): process->v_bdy_rec[i];
-  double eta_ij = GET(&eta, i, j)
+  eta_ij = GET(&eta, i, j)
           - c1 / param.dx * (u_1 - GET(&u, i, j))
           - c1 / param.dy * (v_1 - GET(&v, i, j));
         SET(&eta, i, j, eta_ij);
@@ -431,12 +431,12 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   MPI_Irecv(process->etay_bdy_rec, process->length_y, MPI_DOUBLE, process->neighbors[UP], 1,  cart_comm, &eta_up);
 
   // update eta for right boundary
-  int j = process->length_y - 1;
-  for(int i = 0; i < process->length_x - 1; i++){
-    double h_ij = GET(&h_interp, i, j);
-    double c1 = param.dt * h_ij;
-    double v_1 = process->coords[1]== dims[1]? GET(&v, i, j+1): process->v_bdy_rec[i];
-    double eta_ij = GET(&eta, i, j)
+  j = process->length_y - 1;
+  for(i = 0; i < process->length_x - 1; i++){
+    h_ij = GET(&h_interp, i, j);
+    c1 = param.dt * h_ij;
+    v_1 = process->coords[1]== dims[1]? GET(&v, i, j+1): process->v_bdy_rec[i];
+    eta_ij = GET(&eta, i, j)
             - c1 / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
             - c1 / param.dy * (v_1 - GET(&v, i, j));
           SET(&eta, i, j, eta_ij);
@@ -449,11 +449,11 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
 
 
   // update eta for interior domain and other boundaries
-      for(int i = 0; i < process->length_x-1; i++) {
-        for(int j = 0; j < process->length_y-1 ; j++) {
-          double h_ij = GET(&h_interp, i, j);
-          double c1 = param.dt * h_ij;
-          double eta_ij = GET(&eta, i, j)
+      for(i = 0; i < process->length_x-1; i++) {
+        for(j = 0; j < process->length_y-1 ; j++) {
+          h_ij = GET(&h_interp, i, j);
+          c1 = param.dt * h_ij;
+          eta_ij = GET(&eta, i, j)
             - c1 / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
             - c1 / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
           SET(&eta, i, j, eta_ij);
@@ -461,11 +461,11 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
       }
 
       // update u and v domain except up and left boundaries
-      for(int i = 1; i < process->length_x; i++) {
-        for(int j = 1; j < process->length_y; j++) {
-          double c1 = param.dt * param.g;
+      for(i = 1; i < process->length_x; i++) {
+        for(j = 1; j < process->length_y; j++) {
+          c1 = param.dt * param.g;
           double c2 = param.dt * param.gamma;
-          double eta_ij = GET(&eta, i, j);
+          eta_ij = GET(&eta, i, j);
           double eta_imj = GET(&eta, (i == 0) ? 0 : i - 1, j);
           double eta_ijm = GET(&eta, i, (j == 0) ? 0 : j - 1);
           double u_ij = (1. - c2) * GET(&u, i, j)
@@ -482,16 +482,16 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
       MPI_Wait(&eta_left, MPI_STATUS_IGNORE);
 
       // update left boundary
-      int j = 0;
-      for(int i = 1; i < process->length_x; i++) {
-          double c1 = param.dt * param.g;
-          double c2 = param.dt * param.gamma;
-          double eta_ij = GET(&eta, i, j);
+      j = 0;
+      for(i = 1; i < process->length_x; i++) {
+          c1 = param.dt * param.g;
+          c2 = param.dt * param.gamma;
+          eta_ij = GET(&eta, i, j);
           double eta_imj = GET(&eta, i - 1, j);
           double eta_ijm = (process->coords[1]==0)? GET(&eta, i, 0):process->etax_bdy_rec[i];
-          double u_ij = (1. - c2) * GET(&u, i, j)
+          u_ij = (1. - c2) * GET(&u, i, j)
             - c1 / param.dx * (eta_ij - eta_imj);
-          double v_ij = (1. - c2) * GET(&v, i, j)
+          v_ij = (1. - c2) * GET(&v, i, j)
             - c1 / param.dy * (eta_ij - eta_ijm);
           SET(&u, i, j, u_ij);
           SET(&v, i, j, v_ij);
@@ -502,14 +502,14 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
       // update up boundary
       int i = 0;
       for(int j = 1; j < process->length_y; j++) {
-          double c1 = param.dt * param.g;
-          double c2 = param.dt * param.gamma;
-          double eta_ij = GET(&eta, i, j);
-          double eta_imj = (process->coords[1]==0)? GET(&eta, 0, j):process->etay_bdy_rec[i];
-          double eta_ijm = GET(&eta, i, j - 1);
-          double u_ij = (1. - c2) * GET(&u, i, j)
+          c1 = param.dt * param.g;
+          c2 = param.dt * param.gamma;
+          eta_ij = GET(&eta, i, j);
+          eta_imj = (process->coords[1]==0)? GET(&eta, 0, j):process->etay_bdy_rec[i];
+          eta_ijm = GET(&eta, i, j - 1);
+          u_ij = (1. - c2) * GET(&u, i, j)
             - c1 / param.dx * (eta_ij - eta_imj);
-          double v_ij = (1. - c2) * GET(&v, i, j)
+          v_ij = (1. - c2) * GET(&v, i, j)
             - c1 / param.dy * (eta_ij - eta_ijm);
           SET(&u, i, j, u_ij);
           SET(&v, i, j, v_ij);
@@ -519,16 +519,16 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
 
       // update up left corner
 
-      int i = 0;
-      int j=0;
-      double c1 = param.dt * param.g;
-      double c2 = param.dt * param.gamma;
-      double eta_ij = GET(&eta, i, j);
-      double eta_imj = (process->coords[1]==0)? GET(&eta, 0, j):process->etay_bdy_rec[i];
-      double eta_ijm = (process->coords[1]==0)? GET(&eta, i, 0):process->etax_bdy_rec[i];
-      double u_ij = (1. - c2) * GET(&u, i, j)
+      i = 0;
+      j = 0;
+      c1 = param.dt * param.g;
+      c2 = param.dt * param.gamma;
+      eta_ij = GET(&eta, i, j);
+      eta_imj = (process->coords[1]==0)? GET(&eta, 0, j):process->etay_bdy_rec[i];
+      eta_ijm = (process->coords[1]==0)? GET(&eta, i, 0):process->etax_bdy_rec[i];
+      u_ij = (1. - c2) * GET(&u, i, j)
         - c1 / param.dx * (eta_ij - eta_imj);
-      double v_ij = (1. - c2) * GET(&v, i, j)
+      v_ij = (1. - c2) * GET(&v, i, j)
         - c1 / param.dy * (eta_ij - eta_ijm);
       SET(&u, i, j, u_ij);
       SET(&v, i, j, v_ij);
