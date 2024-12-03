@@ -569,6 +569,7 @@ int main(int argc, char **argv)
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
   // Creation of the Cartesian grid
   MPI_Dims_create(world_size, 2, dims);
+  printf("MPI Grid dimensions: (P_x=%d, P_y=%d)\n", dims[0], dims[1]);
   MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, reorder, &cart_comm);
   // Retrieval of the rank of the world
   MPI_Comm_rank(cart_comm, &cart_rank);
@@ -597,9 +598,9 @@ int main(int argc, char **argv)
   init_process(&my_process, cart_comm, dims, nx, ny);
   //debugging
   printf("Process %d: start_x=%d, end_x=%d, length_x=%d\n", 
-       (*process)->rank, (*process)->start_x, (*process)->end_x, (*process)->length_x);
+       my_process->rank, my_process->start_x, my_process->end_x, my_process->length_x);
   printf("Process %d: start_y=%d, end_y=%d, length_y=%d\n", 
-       (*process)->rank, (*process)->start_y, (*process)->end_y, (*process)->length_y);
+       my_process->rank, my_process->start_y, my_process->end_y, my_process->length_y);
 
     if(my_process->rank == 0)
   {
