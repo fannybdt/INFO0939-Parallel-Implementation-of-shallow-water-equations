@@ -445,8 +445,8 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   }
 
   // Send this boundary
-  MPI_Isend(process->etax_bdy_send, process->length_y, MPI_DOUBLE, process->neighbors[RIGHT], 2,  cart_comm, &eta_right);
-  MPI_Irecv(process->etax_bdy_rec, process->length_y, MPI_DOUBLE, process->neighbors[LEFT], 2,  cart_comm, &eta_left);
+  MPI_Isend(process->etax_bdy_send, process->length_x, MPI_DOUBLE, process->neighbors[RIGHT], 2,  cart_comm, &eta_right);
+  MPI_Irecv(process->etax_bdy_rec, process->length_x, MPI_DOUBLE, process->neighbors[LEFT], 2,  cart_comm, &eta_left);
 
 
   // update eta for interior domain and other boundaries
