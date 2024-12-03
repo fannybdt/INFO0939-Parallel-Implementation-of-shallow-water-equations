@@ -330,18 +330,13 @@ int init_data(struct data *data, int nx, int ny, double dx, double dy,
   data->ny = ny;
   data->dx = dx;
   data->dy = dy;
-  fprintf(stderr, "nx=%d, ny=%d, sizeof(double)=%lu, total=%lu\n",
-        nx, ny, sizeof(double), (unsigned long)(nx * ny * sizeof(double)));
-
-  fprintf(stderr, "BEFORE PROBLEMATIC MALLOC\n");
   data->values = (double*)malloc(nx * ny * sizeof(double));
-  fprintf(stderr, "AFTER PROBLEMATIC MALLOC\n");
+
   if(!data->values){
     printf("Error: Could not allocate data\n");
     return 1;
   }
   for(int i = 0; i < nx * ny; i++) data->values[i] = val;
-  fprintf(stderr, "I SUCCESSED INIT DATA\n");
   return 0;
 }
 
@@ -725,7 +720,7 @@ int main(int argc, char **argv)
   free_data(&eta);
   free_data(&u);
   free_data(&v);
-
+  free_process(my_process);
   MPI_Finalize();
   return 0;
 }
