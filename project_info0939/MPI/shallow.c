@@ -79,11 +79,11 @@ void init_process(process_t **process, MPI_Comm cart_comm, int dims[2], int nx, 
 
   (*process)->start_x = (int) floor(((*process)->coords[0]*nx)/dims[0]);
   (*process)->end_x = (int) floor((((*process)->coords[0] + 1)*nx)/dims[0]) - 1;
-  (*process)->length_x = (*process)->end_x - (*process)->start_x + 1;
+  (*process)->length_x = (int) (*process)->end_x - (*process)->start_x + 1;
 
   (*process)->start_y = (int) floor(((*process)->coords[1]*ny)/dims[1]);
   (*process)->end_y = (int) floor((((*process)->coords[1] + 1)*ny)/dims[1]) - 1;
-  (*process)->length_y = (*process)->end_y - (*process)->start_y + 1;
+  (*process)->length_y = (int) (*process)->end_y - (*process)->start_y + 1;
 
   (*process)->etay_bdy_send = malloc(sizeof(double)*(*process)->length_y);
   (*process)->etay_bdy_rec = malloc(sizeof(double)*(*process)->length_y);
@@ -104,16 +104,16 @@ void init_process(process_t **process, MPI_Comm cart_comm, int dims[2], int nx, 
   {
     (*process)->etax_bdy_send[i] = 0;
     (*process)->etax_bdy_rec[i] = 0;
-    (*process)->u_bdy_send[i] = 0;
-    (*process)->u_bdy_rec[i] = 0;
+    (*process)->v_bdy_send[i] = 0;
+    (*process)->v_bdy_rec[i] = 0;
   }
 
   for(int j = 0; j < (*process)->length_y; j++)
   {
     (*process)->etay_bdy_send[j] = 0;
     (*process)->etay_bdy_rec[j] = 0;
-    (*process)->v_bdy_send[j] = 0;
-    (*process)->v_bdy_rec[j] = 0;
+    (*process)->u_bdy_send[j] = 0;
+    (*process)->u_bdy_rec[j] = 0;
   
   }
 }
@@ -152,10 +152,10 @@ int read_parameters(struct parameters *param, const char *filename) {
     if (ok) ok = (fscanf(fp, "%lf", &param->gamma) == 1);
     if (ok) ok = (fscanf(fp, "%d", &param->source_type) == 1);
     if (ok) ok = (fscanf(fp, "%d", &param->sampling_rate) == 1);
-    if (ok) ok = (fscanf(fp, "%256s", param->input_h_filename) == 1);
-    if (ok) ok = (fscanf(fp, "%256s", param->output_eta_filename) == 1);
-    if (ok) ok = (fscanf(fp, "%256s", param->output_u_filename) == 1);
-    if (ok) ok = (fscanf(fp, "%256s", param->output_v_filename) == 1);
+    if (ok) ok = (fscanf(fp, "%255s", param->input_h_filename) == 1);
+    if (ok) ok = (fscanf(fp, "%255s", param->output_eta_filename) == 1);
+    if (ok) ok = (fscanf(fp, "%255s", param->output_u_filename) == 1);
+    if (ok) ok = (fscanf(fp, "%255s", param->output_v_filename) == 1);
     fclose(fp);
 
     if (!ok) {
@@ -332,12 +332,18 @@ int init_data(struct data *data, int nx, int ny, double dx, double dy,
   data->ny = ny;
   data->dx = dx;
   data->dy = dy;
+  fprintf(stderr, "nx=%d, ny=%d, sizeof(double)=%lu, total=%lu\n",
+        nx, ny, sizeof(double), (unsigned long)(nx * ny * sizeof(double)));
+
+  fprintf(stderr, "BEFORE PROBLEMATIC MALLOC\n");
   data->values = (double*)malloc(nx * ny * sizeof(double));
+  fprintf(stderr, "AFTER PROBLEMATIC MALLOC\n");
   if(!data->values){
     printf("Error: Could not allocate data\n");
     return 1;
   }
   for(int i = 0; i < nx * ny; i++) data->values[i] = val;
+  fprintf(stderr, "I SUCCESSED INIT DATA\n");
   return 0;
 }
 
