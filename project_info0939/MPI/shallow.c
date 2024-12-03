@@ -268,8 +268,8 @@ int write_data_vtk(const struct data *data, const char *name,
   fprintf(fp, "<VTKFile type=\"ImageData\" version=\"1.0\" "
           "byte_order=\"LittleEndian\" header_type=\"UInt64\">\n");
   fprintf(fp, "  <ImageData WholeExtent=\"0 %d 0 %d 0 0\" "
-          "Spacing=\"%lf %lf 0.0\"",
-          "Origin=\"%lf %lf 0\">\n",
+          "Spacing=\"%lf %lf 0.0\" "
+           "Origin=\"%lf %lf 0\">\n",
           data->nx - 1, data->ny - 1, data->dx, data->dy,  offset_x * data->dx, offset_y * data->dy);
   fprintf(fp, "    <Piece Extent=\"0 %d 0 %d 0 0\">\n",
           data->nx - 1, data->ny - 1);
