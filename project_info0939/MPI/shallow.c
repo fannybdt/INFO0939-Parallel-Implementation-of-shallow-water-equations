@@ -165,11 +165,6 @@ int read_parameters(struct parameters *param, const char *filename) {
     return 0;
 }
 
-void filename_with_rank(char *filename, int rank) {
-    char buffer[256];
-    snprintf(buffer, sizeof(buffer), "%d_%s", rank, filename);
-    snprintf(filename, 256, "%s", buffer);  // Remplacer directement dans le champ
-}
 
 void print_parameters(const struct parameters *param)
 {
@@ -252,13 +247,13 @@ int write_data(const struct data *data, const char *filename, int step)
 }
 
 int write_data_vtk(const struct data *data, const char *name,
-                   const char *filename, int step)
+                   const char *filename, int step, int rank, int offset_x, int offset_y)
 {
   char out[512];
   if(step < 0)
     sprintf(out, "%s.vti", filename);
   else
-    sprintf(out, "%s_%d.vti", filename, step);
+    sprintf(out, "%s_rank%d_%d.vti", filename, rank, step);
 
   FILE *fp = fopen(out, "wb");
   if(!fp) {
@@ -275,6 +270,9 @@ int write_data_vtk(const struct data *data, const char *name,
   fprintf(fp, "  <ImageData WholeExtent=\"0 %d 0 %d 0 0\" "
           "Spacing=\"%lf %lf 0.0\">\n",
           data->nx - 1, data->ny - 1, data->dx, data->dy);
+  fprintf(fp, "  <ImageData WholeExtent=\"0 %d 0 %d 0 0\" "
+          "Origin=\"%lf %lf 0\">\n",
+          data->nx - 1, data->ny - 1, offset_x * data->dx, offset_y * data->dy);
   fprintf(fp, "    <Piece Extent=\"0 %d 0 %d 0 0\">\n",
           data->nx - 1, data->ny - 1);
 
@@ -421,7 +419,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   j = process->length_y - 1;
   h_ij = GET(&h_interp, i, j);
   c1 = param.dt * h_ij;
-  u_1 = process->coords[0]== dims[0]? GET(&u, i+1, j): process->u_bdy_rec[j];
+  u_1 = process->coords[0]== dims[0] - 1? GET(&u, i+1, j): process->u_bdy_rec[j];
   v_1 = process->coords[1]== dims[1] - 1? GET(&v, i, j+1): process->v_bdy_rec[i];
   eta_ij = GET(&eta, i, j)
           - c1 / param.dx * (u_1 - GET(&u, i, j))
@@ -439,7 +437,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   for(i = 0; i < process->length_x - 1; i++){
     h_ij = GET(&h_interp, i, j);
     c1 = param.dt * h_ij;
-    v_1 = process->coords[1]== dims[1]? GET(&v, i, j+1): process->v_bdy_rec[i];
+    v_1 = process->coords[1]== dims[1] - 1? GET(&v, i, j+1): process->v_bdy_rec[i];
     eta_ij = GET(&eta, i, j)
             - c1 / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
             - c1 / param.dy * (v_1 - GET(&v, i, j));
@@ -632,9 +630,6 @@ int main(int argc, char **argv)
       SET(&h_interp, i, j, val);
     }
   }
-  filename_with_rank(param.output_eta_filename, my_process->rank);
-  filename_with_rank(param.output_u_filename, my_process->rank);
-  filename_with_rank(param.output_v_filename, my_process->rank);
 
   double start = GET_TIME();
 
@@ -652,7 +647,7 @@ int main(int argc, char **argv)
 
     // output solution
     if(param.sampling_rate && !(n % param.sampling_rate)) {
-      write_data_vtk(&eta, "water elevation", param.output_eta_filename, n);
+      write_data_vtk(&eta, "water elevation", param.output_eta_filename, n, my_process->rank, my_process->start_x, my_process->start_y);
       //write_data_vtk(&u, "x velocity", param.output_u_filename, n);
       //write_data_vtk(&v, "y velocity", param.output_v_filename, n);
     }
