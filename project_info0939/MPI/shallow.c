@@ -66,9 +66,10 @@ typedef struct process {
 void init_process(process_t **process, MPI_Comm cart_comm, int dims[2], int nx, int ny){
 
   *process = malloc(sizeof(process_t));
-  if(!(*process))
-    fprintf(stderr, "Error: Failure of memory allocation for the stucture process \n");
+  if(!(*process)) {
+    fprintf(stderr, "Error: Failure of memory allocation for the structure process \n");
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+  }
 
   MPI_Comm_rank(MPI_COMM_WORLD , &((*process)->rank));
   MPI_Cart_coords(cart_comm, (*process)->rank, 2, ((*process)->coords));
@@ -76,12 +77,12 @@ void init_process(process_t **process, MPI_Comm cart_comm, int dims[2], int nx, 
   MPI_Cart_shift(cart_comm, 0, 1, &((*process)->neighbors)[UP],&((*process)->neighbors)[DOWN]);
   MPI_Cart_shift(cart_comm, 1, 1, &((*process)->neighbors)[LEFT], &((*process)->neighbors)[RIGHT]);
 
-  (*process)->start_x = (int) floor(((*process)->coords[0]*nx)/dims[1]);
-  (*process)->end_x = (int) floor((((*process)->coords[0] + 1)*nx)/dims[1]) - 1;
+  (*process)->start_x = (int) floor(((*process)->coords[0]*nx)/dims[0]);
+  (*process)->end_x = (int) floor((((*process)->coords[0] + 1)*nx)/dims[0]) - 1;
   (*process)->length_x = (*process)->end_x - (*process)->start_x + 1;
 
-  (*process)->start_y = (int) floor(((*process)->coords[1]*ny)/dims[2]);
-  (*process)->end_y = (int) floor((((*process)->coords[1] + 1)*ny)/dims[2]) - 1;
+  (*process)->start_y = (int) floor(((*process)->coords[1]*ny)/dims[1]);
+  (*process)->end_y = (int) floor((((*process)->coords[1] + 1)*ny)/dims[1]) - 1;
   (*process)->length_y = (*process)->end_y - (*process)->start_y + 1;
 
   (*process)->etay_bdy_send = malloc(sizeof(double)*(*process)->length_y);
@@ -421,7 +422,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   h_ij = GET(&h_interp, i, j);
   c1 = param.dt * h_ij;
   u_1 = process->coords[0]== dims[0]? GET(&u, i+1, j): process->u_bdy_rec[j];
-  v_1 = process->coords[1]== dims[1]? GET(&v, i, j+1): process->v_bdy_rec[i];
+  v_1 = process->coords[1]== dims[1] - 1? GET(&v, i, j+1): process->v_bdy_rec[i];
   eta_ij = GET(&eta, i, j)
           - c1 / param.dx * (u_1 - GET(&u, i, j))
           - c1 / param.dy * (v_1 - GET(&v, i, j));
