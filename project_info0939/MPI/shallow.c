@@ -408,7 +408,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   for(j = 0; j < process->length_y-1; j++){
     h_ij = GET(&h_interp, i, j);
     c1 = param.dt * h_ij;
-    u_1 = process->coords[0]== dims[0]? GET(&u, i+1, j): process->u_bdy_rec[j];
+    u_1 = process->coords[0]== dims[0] - 1? GET(&u, i+1, j): process->u_bdy_rec[j];
     eta_ij = GET(&eta, i, j)
             - c1 / param.dx * (u_1 - GET(&u, i, j))
             - c1 / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
@@ -595,6 +595,11 @@ int main(int argc, char **argv)
 
   process_t *my_process;
   init_process(&my_process, cart_comm, dims, nx, ny);
+  //debugging
+  printf("Process %d: start_x=%d, end_x=%d, length_x=%d\n", 
+       (*process)->rank, (*process)->start_x, (*process)->end_x, (*process)->length_x);
+  printf("Process %d: start_y=%d, end_y=%d, length_y=%d\n", 
+       (*process)->rank, (*process)->start_y, (*process)->end_y, (*process)->length_y);
 
     if(my_process->rank == 0)
   {
