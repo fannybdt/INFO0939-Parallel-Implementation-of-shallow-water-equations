@@ -488,7 +488,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
           c2 = param.dt * param.gamma;
           eta_ij = GET(&eta, i, j);
           eta_imj = GET(&eta, i - 1, j);
-          eta_ijm = (process->coords[1]==0)? GET(&eta, i, 0):process->etax_bdy_rec[i];
+          eta_ijm = (process->coords[1]==0)? GET(&eta, i, 0):process->etax_bdy_rec[i]; // to check
           u_ij = (1. - c2) * GET(&u, i, j)
             - c1 / param.dx * (eta_ij - eta_imj);
           v_ij = (1. - c2) * GET(&v, i, j)
@@ -505,7 +505,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
           c1 = param.dt * param.g;
           c2 = param.dt * param.gamma;
           eta_ij = GET(&eta, i, j);
-          eta_imj = (process->coords[1]==0)? GET(&eta, 0, j):process->etay_bdy_rec[i];
+          eta_imj = (process->coords[0]==0)? GET(&eta, 0, j):process->etay_bdy_rec[j]; // to check
           eta_ijm = GET(&eta, i, j - 1);
           u_ij = (1. - c2) * GET(&u, i, j)
             - c1 / param.dx * (eta_ij - eta_imj);
@@ -524,7 +524,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
       c1 = param.dt * param.g;
       c2 = param.dt * param.gamma;
       eta_ij = GET(&eta, i, j);
-      eta_imj = (process->coords[1]==0)? GET(&eta, 0, j):process->etay_bdy_rec[i];
+      eta_imj = (process->coords[0]==0)? GET(&eta, 0, j):process->etay_bdy_rec[j];
       eta_ijm = (process->coords[1]==0)? GET(&eta, i, 0):process->etax_bdy_rec[i];
       u_ij = (1. - c2) * GET(&u, i, j)
         - c1 / param.dx * (eta_ij - eta_imj);
@@ -535,6 +535,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
 
       process->u_bdy_send[j] = u_ij;
       process->v_bdy_send[i] = v_ij;
+
 
 
       
@@ -646,6 +647,7 @@ int main(int argc, char **argv)
     // output solution
     if(param.sampling_rate && !(n % param.sampling_rate)) {
       write_data_vtk(&eta, "water elevation", param.output_eta_filename, n, my_process->rank, my_process->start_x, my_process->start_y);
+      //printf("Eta corner %d ", GET(&eta, 10 , my_process -> length_y - 1));
       //write_data_vtk(&u, "x velocity", param.output_u_filename, n);
       //write_data_vtk(&v, "y velocity", param.output_v_filename, n);
     }
