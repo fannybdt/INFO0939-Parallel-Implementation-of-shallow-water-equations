@@ -479,8 +479,8 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
         }
       }
 
-      MPI_Wait(&eta_up, MPI_STATUS_IGNORE);
-      MPI_Wait(&eta_left, MPI_STATUS_IGNORE);
+      MPI_Request requests[2] = {eta_up, eta_left};
+      MPI_Waitall(2, requests, MPI_STATUSES_IGNORE);
 
       // update left boundary
       j = 0;
