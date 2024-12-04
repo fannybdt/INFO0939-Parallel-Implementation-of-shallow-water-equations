@@ -670,12 +670,12 @@ int main(int argc, char **argv)
       }
       if (my_process -> end_x == nx-1){
         for (int j = 0; j < my_process -> length_y; j++){
-          SET(&u, my_process -> length_x  + 1, j, 0.);}
+          SET(&u, my_process -> length_x, j, 0.);}
       }
       if (my_process -> end_y == ny-1){
         for (int i = 0; i < my_process -> length_x; i++)
         {
-          SET(&v, i, my_process -> length_y  + 1, A * sin(2 * M_PI * f * t));
+          SET(&v, i, my_process -> length_y, A * sin(2 * M_PI * f * t));
         }
       }
 
