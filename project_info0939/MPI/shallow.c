@@ -346,8 +346,6 @@ void free_data(struct data *data)
 
 double interpolate_data(const struct data *data, double x, double y)
 {
-  // TODO: this returns the nearest neighbor, should implement actual
-  // interpolation instead  
   int k = (int)(x / data->dx);
   int l = (int)(y / data->dy);
   int k_1, l_1;
@@ -355,7 +353,7 @@ double interpolate_data(const struct data *data, double x, double y)
     k = 0;
     k_1 = 0;
   } 
-  else if(k > data->nx - 1){
+  else if(k >= data->nx - 1){
     k = data->nx - 1;
     k_1 = data->nx - 1;
   }
@@ -364,7 +362,7 @@ double interpolate_data(const struct data *data, double x, double y)
     l = 0;
     l_1 = 0;
   } 
-  else if(l > data->nx - 1){
+  else if(l >= data->nx - 1){
     l = data->nx - 1;
     l_1 = data->nx - 1;
   }
