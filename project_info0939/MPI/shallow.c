@@ -621,8 +621,8 @@ int main(int argc, char **argv)
   
   for(int j = 0; j < my_process->length_y; j++) {
     for(int i = 0; i < my_process->length_x; i++) {
-      double x = i * param.dx + my_process->start_x;
-      double y = j * param.dy + my_process->start_y;
+      double x = (i  + my_process->start_x) * param.dx ;
+      double y = (j  + my_process->start_y) * param.dy ;
       double val = interpolate_data(&h, x, y);
       SET(&h_interp, i, j, val);
     }
