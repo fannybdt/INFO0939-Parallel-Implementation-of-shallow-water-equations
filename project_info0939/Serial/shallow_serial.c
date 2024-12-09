@@ -48,10 +48,10 @@ int read_parameters(struct parameters *param, const char *filename)
   if(ok) ok = (fscanf(fp, "%lf", &param->gamma) == 1);
   if(ok) ok = (fscanf(fp, "%d", &param->source_type) == 1);
   if(ok) ok = (fscanf(fp, "%d", &param->sampling_rate) == 1);
-  if(ok) ok = (fscanf(fp, "%256s", param->input_h_filename) == 1);
-  if(ok) ok = (fscanf(fp, "%256s", param->output_eta_filename) == 1);
-  if(ok) ok = (fscanf(fp, "%256s", param->output_u_filename) == 1);
-  if(ok) ok = (fscanf(fp, "%256s", param->output_v_filename) == 1);
+  if(ok) ok = (fscanf(fp, "%255s", param->input_h_filename) == 1);
+  if(ok) ok = (fscanf(fp, "%255s", param->output_eta_filename) == 1);
+  if(ok) ok = (fscanf(fp, "%255s", param->output_u_filename) == 1);
+  if(ok) ok = (fscanf(fp, "%255s", param->output_v_filename) == 1);
   fclose(fp);
   if(!ok) {
     printf("Error: Could not read one or more parameters in '%s'\n", filename);
@@ -239,8 +239,6 @@ void free_data(struct data *data)
 
 double interpolate_data(const struct data *data, double x, double y)
 {
-  // TODO: this returns the nearest neighbor, should implement actual
-  // interpolation instead
   int k = (int)(x / data->dx);
   int l = (int)(y / data->dy);
   int k_1, l_1;
@@ -248,7 +246,7 @@ double interpolate_data(const struct data *data, double x, double y)
     k = 0;
     k_1 = 0;
   } 
-  else if(k > data->nx - 1){
+  else if(k >= data->nx - 1){
     k = data->nx - 1;
     k_1 = data->nx - 1;
   }
@@ -257,23 +255,16 @@ double interpolate_data(const struct data *data, double x, double y)
     l = 0;
     l_1 = 0;
   } 
-  else if(l > data->nx - 1){
+  else if(l >= data->nx - 1){
     l = data->nx - 1;
     l_1 = data->nx - 1;
   }
   else l_1 = l+1;
 
-  "double val = (GET(data, k, l)*((k+1)*data->dx - x)*((l+1)*data->dy - y) + 
-                GET(data, k_1, l)*(x - k*data->dx )*((l+1)*data->dy - y) +
-                GET(data, k, l_1)*((k+1)*data->dx - x)*(y - l*data->dy) +
-                GET(data, k_1, l_1)*(x - k*data->dx )*(y - l*data->dy)) / (data->dx*data->dy);
-  "
-
-  'w_x = (x - k*data->dx)/data->dx;'
   double w_x = (x/data->dx) - k;
-  double w_y = (y/data.dy) - l;
+  double w_y = (y/data->dy) - l;
 
-  double val = (GET(data, k, l)*(1-w_x)*(1-w_y) + 
+  double val = GET(data, k, l)*(1-w_x)*(1-w_y) + 
                 GET(data, k_1, l)*w_x*(1-w_y) +
                 GET(data, k, l_1)*(1-w_x)*w_y +
                 GET(data, k_1, l_1)*w_x*w_y;
@@ -360,8 +351,8 @@ int main(int argc, char **argv)
       // sinusoidal velocity on top boundary
       double A = 5;
       double f = 1. / 20.;
+    for(int j = 0; j < ny ; j++) {
       for(int i = 0; i < nx; i++) {
-        for(int j = 0; j < ny; j++) {
           SET(&u, 0, j, 0.);
           SET(&u, nx, j, 0.);
           SET(&v, i, 0, 0.);
@@ -382,8 +373,8 @@ int main(int argc, char **argv)
     }
 
     // update eta
-    for(int i = 0; i < nx; i++) {
-      for(int j = 0; j < ny ; j++) {
+    for(int j = 0; j < ny ; j++) {
+      for(int i = 0; i < nx; i++) {
         // TODO: this does not evaluate h at the correct locations
         double h_ij = GET(&h_interp, i, j);
         double c1 = param.dt * h_ij;
@@ -395,8 +386,8 @@ int main(int argc, char **argv)
     }
 
     // update u and v
-    for(int i = 0; i < nx; i++) {
-      for(int j = 0; j < ny; j++) {
+    for(int j = 0; j < ny ; j++) {
+      for(int i = 0; i < nx; i++) {
         double c1 = param.dt * param.g;
         double c2 = param.dt * param.gamma;
         double eta_ij = GET(&eta, i, j);

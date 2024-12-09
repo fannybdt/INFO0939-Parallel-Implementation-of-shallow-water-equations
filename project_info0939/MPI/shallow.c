@@ -447,8 +447,8 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
 
 
   // update eta for interior domain and other boundaries
-      for(i = 0; i < process->length_x-1; i++) {
-        for(j = 0; j < process->length_y-1 ; j++) {
+      for(j = 0; j < process->length_y-1 ; j++) {
+        for(i = 0; i < process->length_x-1; i++) {
           h_ij = GET(&h_interp, i, j);
           c1 = param.dt * h_ij;
           eta_ij = GET(&eta, i, j)
@@ -459,8 +459,8 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
       }
 
       // update u and v domain except up and left boundaries
-      for(i = 1; i < process->length_x; i++) {
-        for(j = 1; j < process->length_y; j++) {
+      for(j = 1; j < process->length_y; j++) {
+        for(i = 1; i < process->length_x; i++) {
           c1 = param.dt * param.g;
           c2 = param.dt * param.gamma;
           eta_ij = GET(&eta, i, j);

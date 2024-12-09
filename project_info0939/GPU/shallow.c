@@ -352,8 +352,8 @@ int main(int argc, char **argv)
       // sinusoidal velocity on top boundary
       double A = 5;
       double f = 1. / 20.;
+    for(int j = 0; j < ny ; j++) {
       for(int i = 0; i < nx; i++) {
-        for(int j = 0; j < ny; j++) {
           SET(&u, 0, j, 0.);
           SET(&u, nx, j, 0.);
           SET(&v, i, 0, 0.);
@@ -377,8 +377,8 @@ int main(int argc, char **argv)
 
     // update eta
     #pragma omp target teams distribute parallel for collapse(2)
-    for(int i = 0; i < nx; i++) {
-      for(int j = 0; j < ny ; j++) {
+    for(int j = 0; j < ny ; j++) {
+      for(int i = 0; i < nx; i++) {
 
         double h_ij = h_interp.values[h_interp.nx * j + i];
         double c1 = param.dt * h_ij;
@@ -391,8 +391,8 @@ int main(int argc, char **argv)
 
     // update u and v
     #pragma omp target teams distribute parallel for collapse(2)
-    for(int i = 0; i < nx; i++) {
-      for(int j = 0; j < ny; j++) {
+    for(int j = 0; j < ny ; j++) {
+      for(int i = 0; i < nx; i++) {
         double c1 = param.dt * param.g;
         double c2 = param.dt * param.gamma;
         double eta_ij = eta.values[eta.nx* j + i];
