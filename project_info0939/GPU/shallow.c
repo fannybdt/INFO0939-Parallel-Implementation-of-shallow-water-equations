@@ -321,10 +321,10 @@ int main(int argc, char **argv)
 
   double start = GET_TIME();
 
-  #pragma omp target enter data map(to: eta.values[0:nx*ny]) \
-                                map(to: u.values[0:(nx+1)*ny]) \
-                                map(to: v.values[0:nx*(ny+1)]) \
-                                map(to: h_interp.values[0:nx*ny])
+  #pragma omp target enter data map(to: eta.values[0:eta.nx*eta.ny], eta.nx, eta.ny) \
+                                map(to: u.values[0:u.nx*u.ny], u.nx, u.ny ) \
+                                map(to: v.values[0:v.nx*v.ny], v.nx, v.ny) \
+                                map(to: h_interp.values[0:h_interp.nx*h_interp.ny], h_interp.nx, h_interp.ny)
 
   for(int n = 0; n < nt; n++) {
 
@@ -337,9 +337,9 @@ int main(int argc, char **argv)
 
     // output solution
     if(param.sampling_rate && !(n % param.sampling_rate)) {
-      #pragma omp target update from(eta.values[0:nx*ny])
-      //#pragma omp target update from(u.values[0:(nx+1)*ny])
-      //#pragma omp target update from(v.values[0:nx*(ny+1)])
+      #pragma omp target update from(eta.values[0:eta.nx*eta.ny])
+      //#pragma omp target update from(u.values[0:u.nx*u.ny])
+      //#pragma omp target update from(v.values[0:v.nx*v.ny])
 
       write_data_vtk(&eta, "water elevation", param.output_eta_filename, n);
       //write_data_vtk(&u, "x velocity", param.output_u_filename, n);
@@ -367,7 +367,7 @@ int main(int argc, char **argv)
       double A = 5;
       double f = 1. / 20.;
       SET(&eta, nx / 2, ny / 2, A * sin(2 * M_PI * f * t));
-      #pragma omp target update to(eta.values[0:nx*ny])
+      #pragma omp target update to(eta.values[0:eta.nx*eta.ny])
     }
     else {
       // TODO: add other sources
@@ -379,13 +379,13 @@ int main(int argc, char **argv)
     #pragma omp target teams distribute parallel for collapse(2)
     for(int i = 0; i < nx; i++) {
       for(int j = 0; j < ny ; j++) {
-        // TODO: this does not evaluate h at the correct locations
-        double h_ij = GET(&h_interp, i, j);
+
+        double h_ij = h_interp.values[h_interp.nx * j + i];
         double c1 = param.dt * h_ij;
-        double eta_ij = GET(&eta, i, j)
-          - c1 / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
-          - c1 / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
-        SET(&eta, i, j, eta_ij);
+        double eta_ij = eta.values[eta.nx* j + i]
+          - c1 / param.dx * (u.values[u.nx* j + (i+1)] - u.values[u.nx* j + i])
+          - c1 / param.dy * (v.values[v.nx* (j+1) + i] - v.values[v.nx* j + i]);
+        eta.values[eta.nx * j + i] = eta_ij;
       }
     }
 
@@ -395,15 +395,15 @@ int main(int argc, char **argv)
       for(int j = 0; j < ny; j++) {
         double c1 = param.dt * param.g;
         double c2 = param.dt * param.gamma;
-        double eta_ij = GET(&eta, i, j);
-        double eta_imj = GET(&eta, (i == 0) ? 0 : i - 1, j);
-        double eta_ijm = GET(&eta, i, (j == 0) ? 0 : j - 1);
-        double u_ij = (1. - c2) * GET(&u, i, j)
+        double eta_ij = eta.values[eta.nx* j + i];
+        double eta_imj = (i == 0) ? eta.values[eta.nx * j + 0] : eta.values[eta.nx * j + (i - 1)];
+        double eta_ijm = (j == 0) ? eta.values[eta.nx * 0 + i] : eta.values[eta.nx * (j - 1) + i];
+        double u_ij = (1. - c2) * u.values[u.nx* j + i]
           - c1 / param.dx * (eta_ij - eta_imj);
-        double v_ij = (1. - c2) * GET(&v, i, j)
+        double v_ij = (1. - c2) * v.values[v.nx* j + i]
           - c1 / param.dy * (eta_ij - eta_ijm);
-        SET(&u, i, j, u_ij);
-        SET(&v, i, j, v_ij);
+        u.values[u.nx * j + i] = u_ij;
+        v.values[v.nx * j + i] = v_ij;
       }
     }
 
