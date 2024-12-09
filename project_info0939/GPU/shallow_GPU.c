@@ -240,8 +240,6 @@ void free_data(struct data *data)
 
 double interpolate_data(const struct data *data, double x, double y)
 {
-  // TODO: this returns the nearest neighbor, should implement actual
-  // interpolation instead
   int k = (int)(x / data->dx);
   int l = (int)(y / data->dy);
   int k_1, l_1;
@@ -323,6 +321,11 @@ int main(int argc, char **argv)
 
   double start = GET_TIME();
 
+  #pragma omp target enter data map(to: eta.values[0:nx*ny]) \
+                                map(to: u.values[0:(nx+1)*ny]) \
+                                map(to: v.values[0:nx*(ny+1)]) \
+                                map(to: h_interp.values[0:nx*ny])
+
   for(int n = 0; n < nt; n++) {
 
     if(n && (n % (nt / 10)) == 0) {
@@ -334,6 +337,10 @@ int main(int argc, char **argv)
 
     // output solution
     if(param.sampling_rate && !(n % param.sampling_rate)) {
+      #pragma omp target update from(eta.values[0:nx*ny])
+      //#pragma omp target update from(u.values[0:(nx+1)*ny])
+      //#pragma omp target update from(v.values[0:nx*(ny+1)])
+
       write_data_vtk(&eta, "water elevation", param.output_eta_filename, n);
       //write_data_vtk(&u, "x velocity", param.output_u_filename, n);
       //write_data_vtk(&v, "y velocity", param.output_v_filename, n);
@@ -353,12 +360,14 @@ int main(int argc, char **argv)
           SET(&v, i, ny, A * sin(2 * M_PI * f * t));
         }
       }
+      #pragma omp target update to(u.values[0:(nx+1)*ny], v.values[0:nx*(ny+1)])
     }
     else if(param.source_type == 2) {
       // sinusoidal elevation in the middle of the domain
       double A = 5;
       double f = 1. / 20.;
       SET(&eta, nx / 2, ny / 2, A * sin(2 * M_PI * f * t));
+      #pragma omp target update to(eta.values[0:nx*ny])
     }
     else {
       // TODO: add other sources
@@ -367,7 +376,7 @@ int main(int argc, char **argv)
     }
 
     // update eta
-    #pragma omp parallel for collapse(2)
+    #pragma omp target teams distribute parallel for collapse(2)
     for(int i = 0; i < nx; i++) {
       for(int j = 0; j < ny ; j++) {
         // TODO: this does not evaluate h at the correct locations
@@ -381,7 +390,7 @@ int main(int argc, char **argv)
     }
 
     // update u and v
-    #pragma omp parallel for collapse(2)
+    #pragma omp target teams distribute parallel for collapse(2)
     for(int i = 0; i < nx; i++) {
       for(int j = 0; j < ny; j++) {
         double c1 = param.dt * param.g;
