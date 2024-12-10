@@ -229,7 +229,7 @@ int init_data(struct data *data, int nx, int ny, double dx, double dy,
     return 1;
   }
   #pragma omp parallel for
-  for(int i = 0; i < nx * ny; i++) data->values[i] = val;
+  for(int i = 0; i < nx * ny; i++) data->values[i] = 1.0;
   return 0;
 }
 
@@ -283,6 +283,12 @@ int main(int argc, char **argv)
   struct parameters param;
   if(read_parameters(&param, argv[1])) return 1;
   print_parameters(&param);
+  double dt = param.dt;
+  double dx = param.dx;
+  double dy = param.dy;
+  double g = param.g;
+  double gamma = param.gamma;
+  printf("dx, gamma = %lf, %lf\n", dx, gamma);
 
   struct data h;
   if(read_data(&h, param.input_h_filename)) return 1;
@@ -290,32 +296,32 @@ int main(int argc, char **argv)
   // infer size of domain from input elevation data
   double hx = h.nx * h.dx;
   double hy = h.ny * h.dy;
-  int nx = floor(hx / param.dx);
-  int ny = floor(hy / param.dy);
+  int nx = floor(hx / dx);
+  int ny = floor(hy / dy);
   if(nx <= 0) nx = 1;
   if(ny <= 0) ny = 1;
-  int nt = floor(param.max_t / param.dt);
+  int nt = floor(param.max_t / dt);
 
   printf(" - grid size: %g m x %g m (%d x %d = %d grid points)\n",
          hx, hy, nx, ny, nx * ny);
   printf(" - number of time steps: %d\n", nt);
 
   struct data eta, u, v;
-  init_data(&eta, nx, ny, param.dx, param.dx, 0.);
-  init_data(&u, nx + 1, ny, param.dx, param.dy, 0.);
-  init_data(&v, nx, ny + 1, param.dx, param.dy, 0.);
+  init_data(&eta, nx, ny, dx, dy, 0.);
+  init_data(&u, nx + 1, ny, dx, dy, 0.);
+  init_data(&v, nx, ny + 1, dx, dy, 0.);
 
   // interpolate bathymetry
   struct data h_interp;
-  init_data(&h_interp, nx, ny, param.dx, param.dy, 0.);
+  init_data(&h_interp, nx, ny, dx, dy, 0.);
   
   #pragma omp parallel for collapse(2)
   for(int j = 0; j < ny; j++) {
     for(int i = 0; i < nx; i++) {
-      double x = i * param.dx;
-      double y = j * param.dy;
+      double x = i * dx;
+      double y = j * dy;
       double val = interpolate_data(&h, x, y);
-      SET(&h_interp, i, j, val);
+      h_interp.values[h_interp.nx*j + i] = val;
     }
   }
 
@@ -338,6 +344,7 @@ int main(int argc, char **argv)
     // output solution
     if(param.sampling_rate && !(n % param.sampling_rate)) {
       #pragma omp target update from(eta.values[0:eta.nx*eta.ny])
+      printf("eta[0,0]: %g\n", GET(&eta, 0, 0));
       //#pragma omp target update from(u.values[0:u.nx*u.ny])
       //#pragma omp target update from(v.values[0:v.nx*v.ny])
 
@@ -347,27 +354,26 @@ int main(int argc, char **argv)
     }
 
     // impose boundary conditions
-    double t = n * param.dt;
+    double t = n * dt;
     if(param.source_type == 1) {
       // sinusoidal velocity on top boundary
       double A = 5;
       double f = 1. / 20.;
+    #pragma omp target teams distribute parallel for collapse(2)
     for(int j = 0; j < ny ; j++) {
       for(int i = 0; i < nx; i++) {
-          SET(&u, 0, j, 0.);
-          SET(&u, nx, j, 0.);
-          SET(&v, i, 0, 0.);
-          SET(&v, i, ny, A * sin(2 * M_PI * f * t));
+          u.values[u.nx*j + 0] = 0.;
+          u.values[u.nx*j + nx] = 0.;
+          v.values[i] = 0.; 
+          v.values[v.nx*ny + i] = A * sin(2* M_PI * f * t);
         }
       }
-      #pragma omp target update to(u.values[0:(nx+1)*ny], v.values[0:nx*(ny+1)])
     }
     else if(param.source_type == 2) {
       // sinusoidal elevation in the middle of the domain
       double A = 5;
       double f = 1. / 20.;
-      SET(&eta, nx / 2, ny / 2, A * sin(2 * M_PI * f * t));
-      #pragma omp target update to(eta.values[0:eta.nx*eta.ny])
+      eta.values[eta.nx*(ny/2) + (nx/2)] = A * sin(2 * M_PI * f * t);
     }
     else {
       // TODO: add other sources
@@ -379,13 +385,14 @@ int main(int argc, char **argv)
     #pragma omp target teams distribute parallel for collapse(2)
     for(int j = 0; j < ny ; j++) {
       for(int i = 0; i < nx; i++) {
-
         double h_ij = h_interp.values[h_interp.nx * j + i];
-        double c1 = param.dt * h_ij;
+        double c1 = dt * h_ij;
         double eta_ij = eta.values[eta.nx* j + i]
-          - c1 / param.dx * (u.values[u.nx* j + (i+1)] - u.values[u.nx* j + i])
-          - c1 / param.dy * (v.values[v.nx* (j+1) + i] - v.values[v.nx* j + i]);
+          - c1 / dx * (u.values[u.nx* j + (i+1)] - u.values[u.nx* j + i])
+          - c1 / dy * (v.values[v.nx* (j+1) + i] - v.values[v.nx* j + i]);
         eta.values[eta.nx * j + i] = eta_ij;
+        if (n == 9){
+        printf("eta_ij = %lf\n", eta_ij);}
       }
     }
 
@@ -393,15 +400,15 @@ int main(int argc, char **argv)
     #pragma omp target teams distribute parallel for collapse(2)
     for(int j = 0; j < ny ; j++) {
       for(int i = 0; i < nx; i++) {
-        double c1 = param.dt * param.g;
-        double c2 = param.dt * param.gamma;
+        double c1 = dt * g;
+        double c2 = dt * gamma;
         double eta_ij = eta.values[eta.nx* j + i];
         double eta_imj = (i == 0) ? eta.values[eta.nx * j + 0] : eta.values[eta.nx * j + (i - 1)];
         double eta_ijm = (j == 0) ? eta.values[eta.nx * 0 + i] : eta.values[eta.nx * (j - 1) + i];
         double u_ij = (1. - c2) * u.values[u.nx* j + i]
-          - c1 / param.dx * (eta_ij - eta_imj);
+          - c1 / dx * (eta_ij - eta_imj);
         double v_ij = (1. - c2) * v.values[v.nx* j + i]
-          - c1 / param.dy * (eta_ij - eta_ijm);
+          - c1 / dy * (eta_ij - eta_ijm);
         u.values[u.nx * j + i] = u_ij;
         v.values[v.nx * j + i] = v_ij;
       }
@@ -410,7 +417,7 @@ int main(int argc, char **argv)
   }
 
   write_manifest_vtk("water elevation", param.output_eta_filename,
-                     param.dt, nt, param.sampling_rate);
+                     dt, nt, param.sampling_rate);
   //write_manifest_vtk("x velocity", param.output_u_filename,
   //                   param.dt, nt, param.sampling_rate);
   //write_manifest_vtk("y velocity", param.output_v_filename,

@@ -339,11 +339,11 @@ int main(int argc, char **argv)
     }
 
     // output solution
-    if(param.sampling_rate && !(n % param.sampling_rate)) {
-      write_data_vtk(&eta, "water elevation", param.output_eta_filename, n);
+    //if(param.sampling_rate && !(n % param.sampling_rate)) {
+      //write_data_vtk(&eta, "water elevation", param.output_eta_filename, n);
       //write_data_vtk(&u, "x velocity", param.output_u_filename, n);
       //write_data_vtk(&v, "y velocity", param.output_v_filename, n);
-    }
+    //}
 
     // impose boundary conditions
     double t = n * param.dt;
