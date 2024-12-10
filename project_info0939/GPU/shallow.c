@@ -229,7 +229,7 @@ int init_data(struct data *data, int nx, int ny, double dx, double dy,
     return 1;
   }
   #pragma omp parallel for
-  for(int i = 0; i < nx * ny; i++) data->values[i] = 1.0;
+  for(int i = 0; i < nx * ny; i++) data->values[i] = val;
   return 0;
 }
 
