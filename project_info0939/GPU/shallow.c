@@ -373,7 +373,9 @@ int main(int argc, char **argv)
       // sinusoidal elevation in the middle of the domain
       double A = 5;
       double f = 1. / 20.;
+      #pragma omp target update from(eta.values[0:eta.nx*eta.ny])
       eta.values[eta.nx*(ny/2) + (nx/2)] = A * sin(2 * M_PI * f * t);
+      #pragma omp target update to(eta.values[0:eta.nx * eta.ny])
     }
     else {
       // TODO: add other sources
@@ -391,8 +393,6 @@ int main(int argc, char **argv)
           - c1 / dx * (u.values[u.nx* j + (i+1)] - u.values[u.nx* j + i])
           - c1 / dy * (v.values[v.nx* (j+1) + i] - v.values[v.nx* j + i]);
         eta.values[eta.nx * j + i] = eta_ij;
-        if (n == 9){
-        printf("eta_ij = %lf\n", eta_ij);}
       }
     }
 
