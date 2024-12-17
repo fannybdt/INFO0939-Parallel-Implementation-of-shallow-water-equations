@@ -369,10 +369,10 @@ int main(int argc, char **argv)
           dt/dx * sqrt(g*h_interp.values[h_interp.nx*j + nx]) * (u.values[u.nx*j + nx] - u.values[u.nx*j + nx - 1]);
 
           v.values[i] = v.values[i] -
-          dt/dx * sqrt(g*h_interp.values[i] * (v.values[i] - v.values[v.nx + i])); 
+          dt/dy * sqrt(g*h_interp.values[i] * (v.values[i] - v.values[v.nx + i])); 
 
           v.values[v.nx*ny + i] = A * sin(2 * M_PI * f * t) - 
-          dt/dx * sqrt(g*h_interp.values[h_interp.nx*ny + i]) * (A * sin(2 * M_PI * f * t) - v.values[v.nx*(ny-1) + i]);
+          dt/dy * sqrt(g*h_interp.values[h_interp.nx*ny + i]) * (A * sin(2 * M_PI * f * t) - v.values[v.nx*(ny-1) + i]);
         }
       }
     }
@@ -390,10 +390,10 @@ int main(int argc, char **argv)
             dt/dx * sqrt(g*h_interp.values[h_interp.nx*j + nx]) * (u.values[u.nx*j + nx] - u.values[u.nx*j + nx - 1]);
 
             v.values[i] = v.values[i] -
-            dt/dx * sqrt(g*h_interp.values[i] * (v.values[i] - v.values[v.nx + i])); 
+            dt/dy * sqrt(g*h_interp.values[i] * (v.values[i] - v.values[v.nx + i])); 
 
             v.values[v.nx*ny + i] = v.values[v.nx*ny + i] - 
-            dt/dx * sqrt(g*h_interp.values[h_interp.nx*ny + i]) * (v.values[v.nx*ny + i] - v.values[v.nx*(ny-1) + i]);
+            dt/dy * sqrt(g*h_interp.values[h_interp.nx*ny + i]) * (v.values[v.nx*ny + i] - v.values[v.nx*(ny-1) + i]);
           }
         }
       #pragma omp target update from(eta.values[0:eta.nx*eta.ny])

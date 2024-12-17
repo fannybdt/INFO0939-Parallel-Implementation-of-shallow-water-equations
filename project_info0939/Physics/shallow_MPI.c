@@ -680,7 +680,7 @@ int main(int argc, char **argv)
           double c = sqrt(param.g*h_ij);
           double v_int = GET(&v, i, 1);  
           double v_bc = GET(&v, i, 0);  
-          SET(&v, i, 0, v_bc - param.dt / param.dx * c * (v_bc - v_int));
+          SET(&v, i, 0, v_bc - param.dt / param.dy * c * (v_bc - v_int));
         }
       }
       if (my_process -> end_x == nx-1){
@@ -732,7 +732,7 @@ int main(int argc, char **argv)
           double c = sqrt(param.g*h_ij);
           double v_int = GET(&v, i, 1);  
           double v_bc = GET(&v, i, 0);  
-          SET(&v, i, 0, v_bc - param.dt / param.dx * c * (v_bc - v_int));
+          SET(&v, i, 0, v_bc - param.dt / param.dy * c * (v_bc - v_int));
         }
       }
       if (my_process -> end_x == nx-1){
