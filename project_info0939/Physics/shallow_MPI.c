@@ -681,28 +681,27 @@ int main(int argc, char **argv)
       if (my_process -> end_x == nx-1){
         for (int j = 0; j < my_process -> length_y; j++){
 
-        double h_ij = GET(&h_interp, my_process -> length_x, j);
+        double h_ij = GET(&h_interp, my_process -> length_x - 1, j);
         double u_int = GET(&u, my_process->length_x - 1, j); 
         double u_bc = GET(&u, my_process->length_x, j);      
         double c = sqrt(param.g * h_ij);   
         SET(&u, my_process->length_x, j, 
-            u_bc - dt / dx * c * (u_bc - u_int));
+            u_bc - param.dt / param.dx * c * (u_bc - u_int));
  
+        }
       }
 
       if (my_process -> end_y == ny-1){
         for (int i = 0; i < my_process -> length_x; i++)
         {
-          double h_ij = GET(&h_interp, i, my_process -> length_y);
+          double h_ij = GET(&h_interp, i, my_process -> length_y - 1);
           double v_int = GET(&v, i, my_process -> length_y - 1); 
           double v_bc = A * sin(2 * M_PI * f * t);
-          
+          double c = sqrt(param.g * h_ij); 
           SET(&v, i, my_process -> length_y, v_bc - param.dt / param.dy * c * (v_bc - v_int));
         }
       }
-
-      
-    }
+      }
     else if(param.source_type == 2) {
       // sinusoidal elevation in the middle of the domain + transparent BC
       double A = 5;
@@ -734,25 +733,26 @@ int main(int argc, char **argv)
       if (my_process -> end_x == nx-1){
         for (int j = 0; j < my_process -> length_y; j++){
 
-        double h_ij = GET(&h_interp, my_process -> length_x, j);
+        double h_ij = GET(&h_interp, my_process -> length_x - 1, j);
         double u_int = GET(&u, my_process->length_x - 1, j); 
         double u_bc = GET(&u, my_process->length_x, j);      
         double c = sqrt(param.g * h_ij);   
         SET(&u, my_process->length_x, j, 
-            u_bc - dt / dx * c * (u_bc - u_int));
+            u_bc - param.dt / param.dx * c * (u_bc - u_int));
  
+      }
       }
 
       if (my_process -> end_y == ny-1){
         for (int i = 0; i < my_process -> length_x; i++)
         {
-          double h_ij = GET(&h_interp, i, my_process -> length_y);
+          double h_ij = GET(&h_interp, i, my_process -> length_y - 1);
           double v_int = GET(&v, i, my_process -> length_y - 1); 
           double v_bc = GET(&v, i, my_process -> length_y); 
+          double c = sqrt(param.g * h_ij); 
           SET(&v, i, my_process -> length_y, v_bc - param.dt / param.dy * c * (v_bc - v_int));
         }
       }
-
     }
     else {
       // TODO: add other sources
@@ -761,8 +761,7 @@ int main(int argc, char **argv)
     }
 
     update(eta, u, v, my_process, cart_comm, param, h_interp, dims);
-
-  }
+    }
 
     write_manifest_vtk("water elevation", param.output_eta_filename,
                       param.dt, nt, param.sampling_rate);
