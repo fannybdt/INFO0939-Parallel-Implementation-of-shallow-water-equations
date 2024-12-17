@@ -419,6 +419,7 @@ int main(int argc, char **argv)
   free_data(&eta);
   free_data(&u);
   free_data(&v);
+  free_data(&h);
 
 
   return 0;
