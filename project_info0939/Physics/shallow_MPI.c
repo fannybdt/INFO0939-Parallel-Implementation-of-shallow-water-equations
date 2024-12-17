@@ -665,7 +665,7 @@ int main(int argc, char **argv)
           double c = sqrt(param.g*h_ij);
           double u_int = GET(&u, 1, j);  
           double u_bc = GET(&u, 0, j);  
-          SET(&u, 0, j, u_bc + param.dt / param.dx * c * (u_int - u_bc));
+          SET(&u, 0, j, u_bc - param.dt / param.dx * c * (u_bc - u_int));
         }
       }
       if (my_process->start_y == 0){
@@ -675,7 +675,7 @@ int main(int argc, char **argv)
           double c = sqrt(param.g*h_ij);
           double v_int = GET(&v, i, 1);  
           double v_bc = GET(&v, i, 0);  
-          SET(&v, i, 0, v_bc + param.dt / param.dx * c * (v_int - v_bc));
+          SET(&v, i, 0, v_bc - param.dt / param.dx * c * (v_bc - v_int));
         }
       }
       if (my_process -> end_x == nx-1){
@@ -717,7 +717,7 @@ int main(int argc, char **argv)
           double c = sqrt(param.g*h_ij);
           double u_int = GET(&u, 1, j);  
           double u_bc = GET(&u, 0, j);  
-          SET(&u, 0, j, u_bc + param.dt / param.dx * c * (u_int - u_bc));
+          SET(&u, 0, j, u_bc - param.dt / param.dx * c * (u_bc - u_int));
         }
       }
       if (my_process->start_y == 0){
@@ -727,7 +727,7 @@ int main(int argc, char **argv)
           double c = sqrt(param.g*h_ij);
           double v_int = GET(&v, i, 1);  
           double v_bc = GET(&v, i, 0);  
-          SET(&v, i, 0, v_bc + param.dt / param.dx * c * (v_int - v_bc));
+          SET(&v, i, 0, v_bc - param.dt / param.dx * c * (v_bc - v_int));
         }
       }
       if (my_process -> end_x == nx-1){
