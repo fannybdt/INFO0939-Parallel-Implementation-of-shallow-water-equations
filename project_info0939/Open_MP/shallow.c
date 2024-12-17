@@ -412,6 +412,7 @@ int main(int argc, char **argv)
          1e-6 * (double)eta.nx * (double)eta.ny * (double)nt / time);
 
   free_data(&h_interp);
+  free_data(&h);
   free_data(&eta);
   free_data(&u);
   free_data(&v);
