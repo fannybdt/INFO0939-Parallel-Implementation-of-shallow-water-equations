@@ -486,7 +486,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
           c2 = param.dt * param.gamma;
           eta_ij = GET(&eta, i, j);
           eta_imj = GET(&eta, i - 1, j);
-          eta_ijm = (process->coords[1]==0)? GET(&eta, i, 0):process->etax_bdy_rec[i]; // to check
+          eta_ijm = (process->coords[1]==0)? GET(&eta, i, 0):process->etax_bdy_rec[i]; 
           u_ij = (1. - c2) * GET(&u, i, j)
             - c1 / param.dx * (eta_ij - eta_imj);
           v_ij = (1. - c2) * GET(&v, i, j)
@@ -503,7 +503,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
           c1 = param.dt * param.g;
           c2 = param.dt * param.gamma;
           eta_ij = GET(&eta, i, j);
-          eta_imj = (process->coords[0]==0)? GET(&eta, 0, j):process->etay_bdy_rec[j]; // to check
+          eta_imj = (process->coords[0]==0)? GET(&eta, 0, j):process->etay_bdy_rec[j];
           eta_ijm = GET(&eta, i, j - 1);
           u_ij = (1. - c2) * GET(&u, i, j)
             - c1 / param.dx * (eta_ij - eta_imj);
@@ -719,6 +719,7 @@ int main(int argc, char **argv)
   free_data(&eta);
   free_data(&u);
   free_data(&v);
+  free_data(&h);
   free_process(my_process);
   MPI_Finalize();
   return 0;
