@@ -375,7 +375,6 @@ int main(int argc, char **argv)
     // update eta
     for(int j = 0; j < ny ; j++) {
       for(int i = 0; i < nx; i++) {
-        // TODO: this does not evaluate h at the correct locations
         double h_ij = GET(&h_interp, i, j);
         double c1 = param.dt * h_ij;
         double eta_ij = GET(&eta, i, j)
