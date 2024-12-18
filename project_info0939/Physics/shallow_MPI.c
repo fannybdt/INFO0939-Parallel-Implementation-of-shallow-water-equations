@@ -399,6 +399,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   int j = 0;
   double h_ij, c1, u_1, eta_ij, v_1, c2, eta_imj, eta_ijm, u_ij, v_ij, c3 = 0.0;
   double w = 2*M_PI*7.292115*0.00001/(6378000);
+
   i = process->length_x - 1;
   for(j = 0; j < process->length_y-1; j++){
     h_ij = GET(&h_interp, i, j);
@@ -670,7 +671,7 @@ int main(int argc, char **argv)
           double c = sqrt(param.g*h_ij);
           double u_int = GET(&u, 1, j);  
           double u_bc = GET(&u, 0, j);  
-          SET(&u, 0, j, u_bc + param.dt / param.dx * c * (u_int - u_bc));
+          SET(&u, 0, j, u_bc - param.dt / param.dx * c * (u_bc - u_int));
         }
       }
       if (my_process->start_y == 0){
@@ -680,7 +681,7 @@ int main(int argc, char **argv)
           double c = sqrt(param.g*h_ij);
           double v_int = GET(&v, i, 1);  
           double v_bc = GET(&v, i, 0);  
-          SET(&v, i, 0, v_bc + param.dt / param.dx * c * (v_int - v_bc));
+          SET(&v, i, 0, v_bc - param.dt / param.dy * c * (v_bc - v_int));
         }
       }
       if (my_process -> end_x == nx-1){
@@ -722,7 +723,7 @@ int main(int argc, char **argv)
           double c = sqrt(param.g*h_ij);
           double u_int = GET(&u, 1, j);  
           double u_bc = GET(&u, 0, j);  
-          SET(&u, 0, j, u_bc + param.dt / param.dx * c * (u_int - u_bc));
+          SET(&u, 0, j, u_bc - param.dt / param.dx * c * (u_bc - u_int));
         }
       }
       if (my_process->start_y == 0){
@@ -732,7 +733,7 @@ int main(int argc, char **argv)
           double c = sqrt(param.g*h_ij);
           double v_int = GET(&v, i, 1);  
           double v_bc = GET(&v, i, 0);  
-          SET(&v, i, 0, v_bc + param.dt / param.dx * c * (v_int - v_bc));
+          SET(&v, i, 0, v_bc - param.dt / param.dy * c * (v_bc - v_int));
         }
       }
       if (my_process -> end_x == nx-1){
