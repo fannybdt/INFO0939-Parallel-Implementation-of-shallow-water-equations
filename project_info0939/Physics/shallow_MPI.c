@@ -398,7 +398,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   int i = 0;
   int j = 0;
   double h_ij, c1, u_1, eta_ij, v_1, c2, eta_imj, eta_ijm, u_ij, v_ij, c3 = 0.0;
-  double f = 0.01;
+  double w = 2*M_PI/(6378000);
   i = process->length_x - 1;
   for(j = 0; j < process->length_y-1; j++){
     h_ij = GET(&h_interp, i, j);
@@ -464,7 +464,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
     for(i = 1; i < process->length_x; i++) {
       c1 = param.dt * param.g;
       c2 = param.dt * param.gamma;
-      c3 = param.dt * f;
+      c3 = param.dt * w * (j*param.dy);
       eta_ij = GET(&eta, i, j);
       eta_imj = GET(&eta, (i == 0) ? 0 : i - 1, j);
       eta_ijm = GET(&eta, i, (j == 0) ? 0 : j - 1);
@@ -486,7 +486,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   for(i = 1; i < process->length_x; i++) {
       c1 = param.dt * param.g;
       c2 = param.dt * param.gamma;
-      c3 = param.dt * f;
+      c3 = param.dt * w * (j*param.dy);
       eta_ij = GET(&eta, i, j);
       eta_imj = GET(&eta, i - 1, j);
       eta_ijm = (process->coords[1]==0)? GET(&eta, i, 0):process->etax_bdy_rec[i];
@@ -505,7 +505,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   for(j = 1; j < process->length_y; j++) {
       c1 = param.dt * param.g;
       c2 = param.dt * param.gamma;
-      c3 = param.dt * f;
+      c3 = param.dt * w * (j*param.dy);
       eta_ij = GET(&eta, i, j);
       eta_imj = (process->coords[0]==0)? GET(&eta, 0, j):process->etay_bdy_rec[j]; 
       eta_ijm = GET(&eta, i, j - 1);
@@ -525,7 +525,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   j = 0;
   c1 = param.dt * param.g;
   c2 = param.dt * param.gamma;
-  c3 = param.dt * f;
+  c3 = param.dt * w * (j*param.dy);
   eta_ij = GET(&eta, i, j);
   eta_imj = (process->coords[0]==0)? GET(&eta, 0, j):process->etay_bdy_rec[j];
   eta_ijm = (process->coords[1]==0)? GET(&eta, i, 0):process->etax_bdy_rec[i];
