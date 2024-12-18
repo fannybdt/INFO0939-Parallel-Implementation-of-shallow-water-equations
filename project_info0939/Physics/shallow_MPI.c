@@ -398,7 +398,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   int i = 0;
   int j = 0;
   double h_ij, c1, u_1, eta_ij, v_1, c2, eta_imj, eta_ijm, u_ij, v_ij, c3 = 0.0;
-  double w = 2*M_PI/(6378000);
+  double w = 2*M_PI*7.292115*0.00001/(6378000);
   i = process->length_x - 1;
   for(j = 0; j < process->length_y-1; j++){
     h_ij = GET(&h_interp, i, j);
