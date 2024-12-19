@@ -715,7 +715,6 @@ int main(int argc, char **argv)
       }
     }
     else {
-      // TODO: add other sources
       printf("Error: Unknown source type %d\n", param.source_type);
       exit(0);
     }
