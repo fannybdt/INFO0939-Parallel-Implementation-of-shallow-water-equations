@@ -2,10 +2,10 @@
 
 Bonjour,
 
-Voici notre implémentation de MPI.
+Vous pourrez trouver dans les différents fichiers l'implémentation du code avec OpenMP+MPI sur CPU ainsi que OpenMP su GPU.
+Pour le point suppélementaire, nous avons choisi d'implémenter la force de coriolis ainsi que les conditions aux limites transparentes. Comme l'implémentation des forces de Coriolis modifiait le schéma de différence finie intial, nous avons décidé de vous fournir un dossier suppmémentaire nommé "Physics" contenant l'implémentation de la force de Coriolis et des conditions aux limites transparentes sur CPU avec OpenMP+MPI.
 
-Il est fort probable que celle-ci ne fonctionne pas encore, car nous n'avons pas encore essayé de la faire tourner. En effet, nous avons d'abord essayé de nous concentrer sur les différents concepts afin d'écrire un code réfléchi sur le plan de l'implémentation. 
 
-Il nous reste donc encore à implémenter les conditions aux limites et ensuite vérifier si notre implémentation est correcte en faisant tourner le code.
+Bien à vous,
 
-Bien à vous
+Lucas Stordeur, Fanny Bodart
