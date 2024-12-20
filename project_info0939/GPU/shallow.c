@@ -359,15 +359,16 @@ int main(int argc, char **argv)
       // sinusoidal velocity on top boundary
       double A = 5;
       double f = 1. / 20.;
-    #pragma omp target teams distribute parallel for collapse(2)
+    #pragma omp target teams distribute parallel for
     for(int j = 0; j < ny ; j++) {
-      for(int i = 0; i < nx; i++) {
-          u.values[u.nx*j + 0] = 0.;
-          u.values[u.nx*j + nx] = 0.;
-          v.values[i] = 0.; 
-          v.values[v.nx*ny + i] = A * sin(2* M_PI * f * t);
-        }
+        u.values[u.nx*j + 0] = 0.;
+        u.values[u.nx*j + nx] = 0.;}
+    #pragma omp target teams distribute parallel for
+    for(int i = 0; i < nx; i++) {
+        v.values[i] = 0.; 
+        v.values[v.nx*ny + i] = A * sin(2* M_PI * f * t);
       }
+      
     }
     else if(param.source_type == 2) {
       // sinusoidal elevation in the middle of the domain
