@@ -76,13 +76,13 @@ void init_process(process_t **process, MPI_Comm cart_comm, int dims[2], int nx, 
   MPI_Cart_shift(cart_comm, 0, 1, &((*process)->neighbors)[UP],&((*process)->neighbors)[DOWN]);
   MPI_Cart_shift(cart_comm, 1, 1, &((*process)->neighbors)[LEFT], &((*process)->neighbors)[RIGHT]);
 
-  (*process)->start_x = (int) floor(((*process)->coords[0]*nx)/dims[0]);
-  (*process)->end_x = (int) floor((((*process)->coords[0] + 1)*nx)/dims[0]) - 1;
-  (*process)->length_x = (int) (*process)->end_x - (*process)->start_x + 1;
+  (*process)->start_x = ((*process)->coords[0]*nx)/dims[0];
+  (*process)->end_x = ((((*process)->coords[0] + 1)*nx)/dims[0]) - 1;
+  (*process)->length_x = (*process)->end_x - (*process)->start_x + 1;
 
-  (*process)->start_y = (int) floor(((*process)->coords[1]*ny)/dims[1]);
-  (*process)->end_y = (int) floor((((*process)->coords[1] + 1)*ny)/dims[1]) - 1;
-  (*process)->length_y = (int) (*process)->end_y - (*process)->start_y + 1;
+  (*process)->start_y = ((*process)->coords[1]*ny)/dims[1];
+  (*process)->end_y = ((((*process)->coords[1] + 1)*ny)/dims[1]) - 1;
+  (*process)->length_y = (*process)->end_y - (*process)->start_y + 1;
 
   (*process)->etay_bdy_send = malloc(sizeof(double)*(*process)->length_y);
   (*process)->etay_bdy_rec = malloc(sizeof(double)*(*process)->length_y);
@@ -417,10 +417,12 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
     eta_ij = GET(&eta, i, j)
             - c1 / param.dx * (u_1 - GET(&u, i, j))
             - c1 / param.dy * (GET(&v, i, j + 1) - GET(&v, i, j));
-          SET(&eta, i, j, eta_ij);
-          process->etay_bdy_send[j] = eta_ij;
+    SET(&eta, i, j, eta_ij);
+    process->etay_bdy_send[j] = eta_ij;
   }
 
+  #pragma omp master
+  {
   // update eta down right corner
   i = process->length_x - 1;
   j = process->length_y - 1;
@@ -431,13 +433,12 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
   eta_ij = GET(&eta, i, j)
           - c1 / param.dx * (u_1 - GET(&u, i, j))
           - c1 / param.dy * (v_1 - GET(&v, i, j));
-        SET(&eta, i, j, eta_ij);
-        process->etay_bdy_send[j] = eta_ij;
-        process->etax_bdy_send[i] = eta_ij;
+  SET(&eta, i, j, eta_ij);
+  process->etay_bdy_send[j] = eta_ij;
+  process->etax_bdy_send[i] = eta_ij;
 
   // Send this boundary
-  #pragma omp master
-  {
+
   MPI_Isend(process->etay_bdy_send, process->length_y, MPI_DOUBLE, process->neighbors[DOWN], 1,  cart_comm, &eta_down);
   MPI_Irecv(process->etay_bdy_rec, process->length_y, MPI_DOUBLE, process->neighbors[UP], 1,  cart_comm, &eta_up);
   }
@@ -452,13 +453,13 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
     eta_ij = GET(&eta, i, j)
             - c1 / param.dx * (GET(&u, i + 1, j) - GET(&u, i, j))
             - c1 / param.dy * (v_1 - GET(&v, i, j));
-          SET(&eta, i, j, eta_ij);
-          process->etax_bdy_send[i] = eta_ij;
+    SET(&eta, i, j, eta_ij);
+    process->etax_bdy_send[i] = eta_ij;
   }
 
-  // Send this boundary
   #pragma omp master
   {
+  // Send this boundary
   MPI_Isend(process->etax_bdy_send, process->length_x, MPI_DOUBLE, process->neighbors[RIGHT], 2,  cart_comm, &eta_right);
   MPI_Irecv(process->etax_bdy_rec, process->length_x, MPI_DOUBLE, process->neighbors[LEFT], 2,  cart_comm, &eta_left);
   }
@@ -539,8 +540,9 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
       process->u_bdy_send[j] = u_ij;
   }
 
+  #pragma omp master
+  {
   // update up left corner
-
   i = 0;
   j = 0;
   c1 = param.dt * param.g;
@@ -557,7 +559,7 @@ void update(struct data eta, struct data u, struct data v, process_t *process, M
 
   process->u_bdy_send[j] = u_ij;
   process->v_bdy_send[i] = v_ij;
-
+  }
 
   }
       
