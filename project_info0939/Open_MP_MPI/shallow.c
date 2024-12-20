@@ -686,20 +686,24 @@ int main(int argc, char **argv)
       double A = 5;
       double f = 1. / 20.;
       if (my_process->start_x == 0){
+        #pragma omp parallel for
         for(int j = 0; j < my_process->length_y; j++) {
           SET(&u, 0, j, 0.);
         }
       }
       if (my_process->start_y == 0){
+        #pragma omp parallel for
         for (int i = 0; i < my_process-> length_x; i++){
           SET(&v, i, 0, 0.);
         }
       }
       if (my_process -> end_x == nx-1){
+        #pragma omp parallel for
         for (int j = 0; j < my_process -> length_y; j++){
           SET(&u, my_process -> length_x, j, 0.);}
       }
       if (my_process -> end_y == ny-1){
+        #pragma omp parallel for
         for (int i = 0; i < my_process -> length_x; i++)
         {
           SET(&v, i, my_process -> length_y, A * sin(2 * M_PI * f * t));
@@ -749,9 +753,3 @@ int main(int argc, char **argv)
   MPI_Finalize();
   return 0;
 }
-
-
-
-
-
-
