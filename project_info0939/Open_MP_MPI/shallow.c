@@ -383,13 +383,13 @@ double interpolate_data(const struct data *data, double x, double y)
 // MPI
 void update(struct data eta, struct data u, struct data v, process_t *process, MPI_Comm cart_comm, struct parameters param, struct data h_interp, int* dims){
   
+  #pragma omp parallel
+  {
+  
   MPI_Request eta_up;
   MPI_Request eta_down;
   MPI_Request eta_left;
   MPI_Request eta_right;
-  
-  #pragma omp parallel
-  {
   
   #pragma omp master
   {
