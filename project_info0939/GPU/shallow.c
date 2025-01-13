@@ -344,7 +344,6 @@ int main(int argc, char **argv)
     // output solution
     if(param.sampling_rate && !(n % param.sampling_rate)) {
       #pragma omp target update from(eta.values[0:eta.nx*eta.ny])
-      printf("eta[0,0]: %g\n", GET(&eta, 0, 0));
       //#pragma omp target update from(u.values[0:u.nx*u.ny])
       //#pragma omp target update from(v.values[0:v.nx*v.ny])
 
@@ -379,7 +378,6 @@ int main(int argc, char **argv)
       #pragma omp target update to(eta.values[0:eta.nx * eta.ny])
     }
     else {
-      // TODO: add other sources
       printf("Error: Unknown source type %d\n", param.source_type);
       exit(0);
     }
