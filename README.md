@@ -1,11 +1,9 @@
-# INFO0939---Parallel-Implementation-of-Tsunami-waves-propagation-Navier-Stokes-
+# INFO0939---Parallel-Implementation-of-shallow-water-equations
 
-Bonjour,
+In this repository, you will find our implementations of MPI, OpenMP CPU, OpenMP CPU + MPI, and OpenMP GPU for the two-dimensional shallow-water equations
 
-Vous pourrez trouver dans les différents fichiers l'implémentation du code avec OpenMP+MPI sur CPU ainsi que OpenMP su GPU.
-Pour le point suppélementaire, nous avons choisi d'implémenter la force de coriolis ainsi que les conditions aux limites transparentes. Comme l'implémentation des forces de Coriolis modifiait le schéma de différence finie intial, nous avons décidé de vous fournir un dossier suppmémentaire nommé "Physics" contenant l'implémentation de la force de Coriolis et des conditions aux limites transparentes sur CPU avec OpenMP+MPI.
+This project was carried out as part of the High Performance Scientific Computing course, taught by Professor C. Geuzaine at ULiège.
 
 
-Bien à vous,
-
-Lucas Stordeur, Fanny Bodart
+## Authors
+Fanny Bodart & Lucas Stordeur
